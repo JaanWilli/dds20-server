@@ -1,5 +1,3 @@
-# SoPra RESTful Service Template FS20
-
 ## Getting started with Spring Boot
 
 -   Documentation: https://docs.spring.io/spring-boot/docs/current/reference/html/index.html
@@ -11,7 +9,7 @@
 
 Download your IDE of choice: (e.g., [Eclipse](http://www.eclipse.org/downloads/), [IntelliJ](https://www.jetbrains.com/idea/download/)) and make sure Java 13 is installed on your system.
 
-1. File -> Open... -> SoPra Server Template
+1. File -> Open... -> ...
 2. Accept to import the project as a `gradle project`
 
 To build right click the `build.gradle` file and choose `Run Build`
