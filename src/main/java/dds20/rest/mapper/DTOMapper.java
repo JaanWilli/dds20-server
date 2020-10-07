@@ -2,7 +2,6 @@ package dds20.rest.mapper;
 
 import dds20.entity.Data;
 import dds20.entity.User;
-import ch.uzh.ifi.seal.soprafs20.rest.dto.*;
 import dds20.rest.dto.*;
 import org.mapstruct.*;
 import org.mapstruct.factory.Mappers;
@@ -33,7 +32,7 @@ public interface DTOMapper {
     @Mapping(source = "id", target = "id")
     @Mapping(source = "data", target = "data")
     DataGetDTO convertEntityToDataGetDTO(Data data);
-
+/*
     @Mapping(source = "message", target = "message")
     @Mapping(source = "transaction", target = "transaction")
     @Mapping(source = "sender", target = "sender")
@@ -42,4 +41,5 @@ public interface DTOMapper {
     @Mapping(source = "transaction", target = "transaction")
     @Mapping(source = "sender", target = "sender")
     User convertInquiryPostDTOtoEntity(InquiryPostDTO inquiryPostDTO);
+    */
 }

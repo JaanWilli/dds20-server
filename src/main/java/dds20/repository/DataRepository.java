@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository("dataRepository")
 public interface DataRepository extends JpaRepository<Data, Long> {
-    Data findByName(String name);
+    //Data findByName(String name);
 
-    Data findByUsername(String username);
+    //Data findByUsername(String username);
 }

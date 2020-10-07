@@ -3,11 +3,8 @@ plugins {
     id 'io.spring.dependency-management' version '1.0.9.RELEASE'
     id 'java'
     id 'idea'
-    id 'jacoco'
-    id "org.sonarqube" version "2.8"
 }
 
-group 'ch.uzh.ifi.seal'
 version '1.0.0'
 
 sourceCompatibility = 1.13
@@ -24,7 +21,7 @@ repositories {
 }
 
 springBoot {
-    mainClassName = 'ch.uzh.ifi.seal.soprafs20.Application'
+    mainClassName = 'dds20.Application'
 }
 
 dependencies {
@@ -56,22 +53,6 @@ test {
     maxParallelForks = 1
 }
 
-test.finalizedBy jacocoTestReport
-
-jacoco {
-    toolVersion = "0.8.5"
-    reportsDir = file("$buildDir/jacocoReportDir")
-}
-
-jacocoTestReport {
-    group = "Reporting"
-    reports {
-        xml.enabled true
-        csv.enabled false
-        html.destination file("${buildDir}/jacocoHtml")
-    }
-}
-
 File secretPropsFile = file('./local.properties')
 if (secretPropsFile.exists()) {
     Properties p = new Properties()
@@ -79,21 +60,6 @@ if (secretPropsFile.exists()) {
     p.each { name, value ->
         ext[name] = value
     }
-}
-
-sonarqube {
-    properties {
-        property "sonar.projectKey", project.sonarProjectKey
-        property "sonar.organization", project.sonarOrganization
-        property "sonar.host.url", "https://sonarcloud.io"
-        property "sonar.login", project.sonarToken
-        property "sonar.coverage.jacoco.xmlReportPaths", ["$buildDir/jacocoReportDir/test/jacocoTestReport.xml"]
-        property "sonar.cpd.exclusions", "**/entity/*.java,**/rest/dto/*.java"
-    }
-}
-
-project.tasks["sonarqube"].dependsOn {
-    test
 }
 
 defaultTasks 'bootJar', 'build'
