@@ -29,27 +29,31 @@ public class DataController {
     @GetMapping("/info")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public List<DataGetDTO> getData() {
-        List<Data> data = dataService.getData();
-        List<DataGetDTO> dataGetDTOs = new ArrayList<>();
-
-        for (Data dataItem : data) {
-            dataGetDTOs.add(DTOMapper.INSTANCE.convertEntityToDataGetDTO(dataItem));
-        }
-        return dataGetDTOs;
+    public DataGetDTO getInfo() {
+        Data data = dataService.getData();
+        return DTOMapper.INSTANCE.convertEntityToDataGetDTO(data);
     }
 
     @PostMapping("/message")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postMessage(@RequestBody MessagePostDTO messagePostDTO) {
-        // handle Message here
+        Data data = dataService.getData();
+        data.setMessage(messagePostDTO.getMessage());
+        data.setTransId(messagePostDTO.getTransId());
+        data.setSenderId(messagePostDTO.getSenderId());
+        dataService.saveData(data);
     }
 
     @PostMapping("/inquiry")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public void postInquiry(@RequestBody InquiryPostDTO inquiryPostDTO) {
-        // handle Inquiry here
+    public MessagePostDTO postInquiry(@RequestBody InquiryPostDTO inquiryPostDTO) {
+        Data data = dataService.getDataFromTransId(inquiryPostDTO.getTransId());
+        MessagePostDTO result = new MessagePostDTO();
+        result.setMessage(data.getMessage());
+        result.setTransId(data.getTransId());
+        result.setSenderId(data.getSenderId());
+        return result;
     }
 }

@@ -29,7 +29,20 @@ public class DataService {
         this.dataRepository = dataRepository;
     }
 
-    public List<Data> getData() {
-        return this.dataRepository.findAll();
+    public Data getData() {
+        return this.dataRepository.findTopByOrderByIdDesc();
+    }
+
+    public Data saveData(Data newData) {
+        // saves the given entity but data is only persisted in the database once flush() is called
+        newData = dataRepository.save(newData);
+        dataRepository.flush();
+
+        log.debug("Created Information for Data: {}", newData);
+        return newData;
+    }
+
+    public Data getDataFromTransId(Integer transId) {
+        return this.dataRepository.findByTransId(transId);
     }
 }

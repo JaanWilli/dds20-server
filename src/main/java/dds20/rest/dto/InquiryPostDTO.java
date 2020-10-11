@@ -2,19 +2,18 @@ package dds20.rest.dto;
 
 public class InquiryPostDTO {
 
-    private int transaction;
+    private int transId;
+    private String senderId;
 
-    private String sender;
+    public int getTransId() { return transId; }
 
-    public int getTransaction() { return transaction; }
+    public void setTransId(int transId) { this.transId = transId; }
 
-    public void setTransaction(int transaction) { this.transaction = transaction; }
-
-    public String getSender() {
-        return sender;
+    public String getSenderId() {
+        return senderId;
     }
 
-    public void setSender(String sender) {
-        this.sender = sender;
+    public void setSenderId(String sender) {
+        this.senderId = senderId;
     }
 }

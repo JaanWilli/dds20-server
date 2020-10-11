@@ -1,7 +1,9 @@
 package dds20.entity;
 
 import javax.persistence.*;
+import javax.persistence.criteria.CriteriaBuilder;
 import java.io.Serializable;
+import java.util.ArrayList;
 
 /**
  * Internal Data Representation
@@ -21,7 +23,25 @@ public class Data implements Serializable {
     private Long id;
 
     @Column(nullable = false)
-    private String data;
+    private String message;
+
+    @Column(nullable = false)
+    private Integer procId;
+
+    @Column(nullable = false)
+    private Integer transId;
+
+    @Column(nullable = false)
+    private Integer coordId;
+
+    @Column(nullable = false)
+    private Integer senderId;
+
+    @Column(nullable = false)
+    private ArrayList<Integer> subordinates;
+
+    @Column(nullable = false)
+    private Boolean isStatus;
 
     public Long getId() {
         return id;
@@ -31,11 +51,55 @@ public class Data implements Serializable {
         this.id = id;
     }
 
-    public String getData() {
-        return data;
+    public String getMessage() {
+        return message;
     }
 
-    public void setData(String data) {
-        this.data = data;
+    public void setMessage(String message) {
+        this.message = message;
     }
+
+    public Integer getProcId() {
+        return procId;
+    }
+
+    public void setProcId(Integer procId) {
+        this.procId = procId;
+    }
+
+    public Integer getTransId() {
+        return transId;
+    }
+
+    public void setTransId(Integer transId) {
+        this.transId = transId;
+    }
+
+    public Integer getCoordId() {
+        return coordId;
+    }
+
+    public void setCoordId(Integer coordId) {
+        this.coordId = coordId;
+    }
+
+    public Integer getSenderId() {
+        return senderId;
+    }
+
+    public void setSenderId(Integer senderId) {
+        this.senderId = senderId;
+    }
+
+    public ArrayList<Integer> getSubordinates() {
+        return subordinates;
+    }
+
+    public void setSubordinates(ArrayList<Integer> subordinates) {
+        this.subordinates = subordinates;
+    }
+
+    public Boolean getIsStatus() { return isStatus; }
+
+    public void setIsStatus(Boolean isStatus) { this.isStatus = isStatus; }
 }

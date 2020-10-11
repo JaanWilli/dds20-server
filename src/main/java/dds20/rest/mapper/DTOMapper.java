@@ -1,10 +1,12 @@
 package dds20.rest.mapper;
 
 import dds20.entity.Data;
-import dds20.entity.User;
+import dds20.entity.Node;
 import dds20.rest.dto.*;
 import org.mapstruct.*;
 import org.mapstruct.factory.Mappers;
+
+import java.util.ArrayList;
 
 /**
  * DTOMapper
@@ -19,27 +21,27 @@ public interface DTOMapper {
 
     DTOMapper INSTANCE = Mappers.getMapper(DTOMapper.class);
 
-    @Mapping(source = "name", target = "name")
-    @Mapping(source = "username", target = "username")
-    User convertUserPostDTOtoEntity(UserPostDTO userPostDTO);
-
     @Mapping(source = "id", target = "id")
-    @Mapping(source = "name", target = "name")
-    @Mapping(source = "username", target = "username")
-    @Mapping(source = "status", target = "status")
-    UserGetDTO convertEntityToUserGetDTO(User user);
-
-    @Mapping(source = "id", target = "id")
-    @Mapping(source = "data", target = "data")
-    DataGetDTO convertEntityToDataGetDTO(Data data);
-/*
     @Mapping(source = "message", target = "message")
-    @Mapping(source = "transaction", target = "transaction")
-    @Mapping(source = "sender", target = "sender")
-    User convertMessagePostDTOtoEntity(MessagePostDTO messagePostDTO);
+    @Mapping(source = "procId", target = "procId")
+    @Mapping(source = "transId", target = "transId")
+    @Mapping(source = "coordId", target = "coordId")
+    @Mapping(source = "subordinates", target = "subordinates")
+    @Mapping(source = "isStatus", target = "isStatus")
+    DataGetDTO convertEntityToDataGetDTO(Data data);
 
-    @Mapping(source = "transaction", target = "transaction")
-    @Mapping(source = "sender", target = "sender")
-    User convertInquiryPostDTOtoEntity(InquiryPostDTO inquiryPostDTO);
-    */
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "active", target = "active")
+    @Mapping(source = "dieAfter", target = "dieAfter")
+    NodeGetDTO convertEntityToNodeGetDTO(Node node);
+
+    @Mapping(source = "active", target = "active")
+    @Mapping(source = "dieAfter", target = "dieAfter")
+    Node convertSettingsPostDTOtoEntity(SettingsPostDTO settingsPostDTO);
+
+    @Mapping(source = "message", target = "message")
+    @Mapping(source = "transId", target = "transId")
+    @Mapping(source = "senderId", target = "senderId")
+    Data convertMessagePostDTOtoEntity(MessagePostDTO messagePostDTO);
+
 }

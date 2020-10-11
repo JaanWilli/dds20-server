@@ -3,10 +3,8 @@ package dds20.rest.dto;
 public class MessagePostDTO {
 
     private String message;
-
-    private int transaction;
-
-    private String sender;
+    private Integer transId;
+    private Integer senderId;
 
     public String getMessage() {
         return message;
@@ -16,15 +14,15 @@ public class MessagePostDTO {
         this.message = message;
     }
 
-    public int getTransaction() { return transaction; }
+    public int getTransId() { return transId; }
 
-    public void setTransaction(int transaction) { this.transaction = transaction; }
+    public void setTransId(int transId) { this.transId = transId; }
 
-    public String getSender() {
-        return sender;
+    public Integer getSenderId() {
+        return senderId;
     }
 
-    public void setSender(String sender) {
-        this.sender = sender;
+    public void setSenderId(Integer senderId) {
+        this.senderId = senderId;
     }
 }
