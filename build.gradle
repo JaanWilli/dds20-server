@@ -53,6 +53,10 @@ test {
     maxParallelForks = 1
 }
 
+bootRun {
+    systemProperties = System.properties
+}
+
 File secretPropsFile = file('./local.properties')
 if (secretPropsFile.exists()) {
     Properties p = new Properties()
