@@ -38,22 +38,14 @@ public class DataController {
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postMessage(@RequestBody MessagePostDTO messagePostDTO) {
-        Data data = dataService.getData();
-        data.setMessage(messagePostDTO.getMessage());
-        data.setTransId(messagePostDTO.getTransId());
-        data.setSenderId(messagePostDTO.getSenderId());
+        Data data = DTOMapper.INSTANCE.convertMessagePostDTOtoEntity(messagePostDTO);
         dataService.saveData(data);
     }
 
     @PostMapping("/inquiry")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public MessagePostDTO postInquiry(@RequestBody InquiryPostDTO inquiryPostDTO) {
+    public void postInquiry(@RequestBody InquiryPostDTO inquiryPostDTO) {
         Data data = dataService.getDataFromTransId(inquiryPostDTO.getTransId());
-        MessagePostDTO result = new MessagePostDTO();
-        result.setMessage(data.getMessage());
-        result.setTransId(data.getTransId());
-        result.setSenderId(data.getSenderId());
-        return result;
     }
 }

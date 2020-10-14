@@ -26,6 +26,12 @@ public class Node implements Serializable {
     @Column(nullable = false)
     private String dieAfter;
 
+    @Column(nullable = false)
+    private String node;
+
+    @Column(nullable = false)
+    private String coordinator;
+
     public Long getId() {
         return id;
     }
@@ -41,4 +47,20 @@ public class Node implements Serializable {
     public String getDieAfter() { return dieAfter; }
 
     public void setDieAfter(String dieAfter) { this.dieAfter = dieAfter; }
+
+    public String getNode() {
+        return node;
+    }
+
+    public void setNode(String node) {
+        this.node = node;
+    }
+
+    public String getCoordinator() {
+        return coordinator;
+    }
+
+    public void setCoordinator(String coordinator) {
+        this.coordinator = coordinator;
+    }
 }

@@ -1,7 +1,6 @@
 package dds20.entity;
 
 import javax.persistence.*;
-import javax.persistence.criteria.CriteriaBuilder;
 import java.io.Serializable;
 import java.util.ArrayList;
 
@@ -26,16 +25,13 @@ public class Data implements Serializable {
     private String message;
 
     @Column(nullable = false)
-    private Integer procId;
+    private String node;
 
     @Column(nullable = false)
     private Integer transId;
 
     @Column(nullable = false)
     private Integer coordId;
-
-    @Column(nullable = false)
-    private Integer senderId;
 
     @Column(nullable = false)
     private ArrayList<Integer> subordinates;
@@ -59,12 +55,12 @@ public class Data implements Serializable {
         this.message = message;
     }
 
-    public Integer getProcId() {
-        return procId;
+    public String getNode() {
+        return node;
     }
 
-    public void setProcId(Integer procId) {
-        this.procId = procId;
+    public void setNode(String node) {
+        this.node = node;
     }
 
     public Integer getTransId() {
@@ -81,14 +77,6 @@ public class Data implements Serializable {
 
     public void setCoordId(Integer coordId) {
         this.coordId = coordId;
-    }
-
-    public Integer getSenderId() {
-        return senderId;
-    }
-
-    public void setSenderId(Integer senderId) {
-        this.senderId = senderId;
     }
 
     public ArrayList<Integer> getSubordinates() {

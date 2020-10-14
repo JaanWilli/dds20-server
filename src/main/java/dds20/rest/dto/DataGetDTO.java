@@ -6,7 +6,7 @@ public class DataGetDTO {
 
     private Long id;
     private String message;
-    private Integer procId;
+    private String node;
     private Integer transId;
     private Integer coordId;
     private Integer senderId;
@@ -29,12 +29,12 @@ public class DataGetDTO {
         this.message = message;
     }
 
-    public Integer getProcId() {
-        return procId;
+    public String getNode() {
+        return node;
     }
 
-    public void setProcId(Integer procId) {
-        this.procId = procId;
+    public void setNode(String node) {
+        this.node = node;
     }
 
     public Integer getTransId() {

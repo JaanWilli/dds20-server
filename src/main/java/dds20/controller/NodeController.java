@@ -26,8 +26,7 @@ public class NodeController {
     @ResponseBody
     public NodeGetDTO getNode() {
         Node node = nodeService.getNode();
-        NodeGetDTO nodeGetDTO = DTOMapper.INSTANCE.convertEntityToNodeGetDTO(node);
-        return nodeGetDTO;
+        return DTOMapper.INSTANCE.convertEntityToNodeGetDTO(node);
     }
 
     @PostMapping("/settings")

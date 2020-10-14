@@ -23,7 +23,7 @@ public interface DTOMapper {
 
     @Mapping(source = "id", target = "id")
     @Mapping(source = "message", target = "message")
-    @Mapping(source = "procId", target = "procId")
+    @Mapping(source = "node", target = "node")
     @Mapping(source = "transId", target = "transId")
     @Mapping(source = "coordId", target = "coordId")
     @Mapping(source = "subordinates", target = "subordinates")
@@ -41,7 +41,6 @@ public interface DTOMapper {
 
     @Mapping(source = "message", target = "message")
     @Mapping(source = "transId", target = "transId")
-    @Mapping(source = "senderId", target = "senderId")
+    @Mapping(source = "node", target = "node")
     Data convertMessagePostDTOtoEntity(MessagePostDTO messagePostDTO);
-
 }
