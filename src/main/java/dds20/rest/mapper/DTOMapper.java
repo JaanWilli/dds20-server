@@ -25,7 +25,7 @@ public interface DTOMapper {
     @Mapping(source = "message", target = "message")
     @Mapping(source = "node", target = "node")
     @Mapping(source = "transId", target = "transId")
-    @Mapping(source = "coordId", target = "coordId")
+    @Mapping(source = "coordinator", target = "coordinator")
     @Mapping(source = "subordinates", target = "subordinates")
     @Mapping(source = "isStatus", target = "isStatus")
     DataGetDTO convertEntityToDataGetDTO(Data data);
@@ -35,12 +35,17 @@ public interface DTOMapper {
     @Mapping(source = "dieAfter", target = "dieAfter")
     NodeGetDTO convertEntityToNodeGetDTO(Node node);
 
-    @Mapping(source = "active", target = "active")
-    @Mapping(source = "dieAfter", target = "dieAfter")
-    Node convertSettingsPostDTOtoEntity(SettingsPostDTO settingsPostDTO);
+    @Mapping(source = "isCoordinator", target = "isCoordinator")
+    @Mapping(source = "isSubordinate", target = "isSubordinate")
+    @Mapping(source = "coordinator", target = "coordinator")
+    @Mapping(source = "subordinates", target = "subordinates")
+    Node convertSetupPostDTOtoEntity(SetupPostDTO setupPostDTO);
 
     @Mapping(source = "message", target = "message")
-    @Mapping(source = "transId", target = "transId")
     @Mapping(source = "node", target = "node")
+    @Mapping(source = "transId", target = "transId")
+    @Mapping(source = "coordinator", target = "coordinator")
+    @Mapping(source = "subordinates", target = "subordinates")
+    @Mapping(source = "isStatus", target = "isStatus")
     Data convertMessagePostDTOtoEntity(MessagePostDTO messagePostDTO);
 }

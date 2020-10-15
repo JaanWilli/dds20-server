@@ -29,15 +29,20 @@ public class DataController {
     @GetMapping("/info")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public DataGetDTO getInfo() {
-        Data data = dataService.getData();
-        return DTOMapper.INSTANCE.convertEntityToDataGetDTO(data);
+    public List<DataGetDTO> getInfo() {
+        List<Data> allData = dataService.getAllData();
+        List<DataGetDTO> result = new ArrayList<>();
+        for (Data data : allData) {
+            result.add(DTOMapper.INSTANCE.convertEntityToDataGetDTO(data));
+        }
+        return result;
     }
 
     @PostMapping("/message")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postMessage(@RequestBody MessagePostDTO messagePostDTO) {
+        messagePostDTO.setIsStatus(false);
         Data data = DTOMapper.INSTANCE.convertMessagePostDTOtoEntity(messagePostDTO);
         dataService.saveData(data);
     }
@@ -46,6 +51,11 @@ public class DataController {
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postInquiry(@RequestBody InquiryPostDTO inquiryPostDTO) {
-        Data data = dataService.getDataFromTransId(inquiryPostDTO.getTransId());
+//        Data data = dataService.getDataFromTransId(inquiryPostDTO.getTransId());
+//        MessagePostDTO result = new MessagePostDTO();
+//        result.setTransId(data.getTransId());
+//        result.setMessage(data.getMessage());
+//        return result;
+        //TODO: send appropriate message to the node that sent the inquiry.
     }
 }

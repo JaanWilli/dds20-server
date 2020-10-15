@@ -44,7 +44,11 @@ public class DataService {
         return this.dataRepository.findTopByOrderByIdDesc();
     }
 
-    public void saveData(Data newData) {
+    public List<Data> getAllData() {
+        return this.dataRepository.findAll();
+    }
+
+    public Data saveData(Data newData) {
         // saves the given entity but data is only persisted in the database once flush() is called
         newData = dataRepository.save(newData);
         dataRepository.flush();

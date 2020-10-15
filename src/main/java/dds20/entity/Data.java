@@ -31,10 +31,10 @@ public class Data implements Serializable {
     private Integer transId;
 
     @Column(nullable = false)
-    private Integer coordId;
+    private String coordinator;
 
     @Column(nullable = false)
-    private ArrayList<Integer> subordinates;
+    private ArrayList<String> subordinates;
 
     @Column(nullable = false)
     private Boolean isStatus;
@@ -71,19 +71,19 @@ public class Data implements Serializable {
         this.transId = transId;
     }
 
-    public Integer getCoordId() {
-        return coordId;
+    public String getCoordinator() {
+        return coordinator;
     }
 
-    public void setCoordId(Integer coordId) {
-        this.coordId = coordId;
+    public void setCoordinator(String coordinator) {
+        this.coordinator = coordinator;
     }
 
-    public ArrayList<Integer> getSubordinates() {
+    public ArrayList<String> getSubordinates() {
         return subordinates;
     }
 
-    public void setSubordinates(ArrayList<Integer> subordinates) {
+    public void setSubordinates(ArrayList<String> subordinates) {
         this.subordinates = subordinates;
     }
 

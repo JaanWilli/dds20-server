@@ -35,7 +35,7 @@ public class NodeService {
         return this.nodeRepository.findTopByOrderByIdDesc();
     }
 
-    public Node createNode(Node newNode) {
+    public Node saveNode(Node newNode) {
         // saves the given entity but data is only persisted in the database once flush() is called
         newNode = nodeRepository.save(newNode);
         nodeRepository.flush();

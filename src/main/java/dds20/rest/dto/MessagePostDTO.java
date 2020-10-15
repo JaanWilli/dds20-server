@@ -6,9 +6,10 @@ public class MessagePostDTO {
 
     private String message;
     private String node;
-    private int transId;
+    private Integer transId;
     private String coordinator;
     private ArrayList<String> subordinates;
+    private Boolean isStatus;
 
     public String getMessage() {
         return message;
@@ -40,9 +41,19 @@ public class MessagePostDTO {
 
     public ArrayList<String> getSubordinates() {
         return subordinates;
+        
     }
 
     public void setSubordinates(ArrayList<String> subordinates) {
         this.subordinates = subordinates;
     }
+
+    public Boolean getIsStatus() {
+        return isStatus;
+    }
+
+    public void setIsStatus(Boolean isStatus) {
+        this.isStatus = isStatus;
+    }
+
 }

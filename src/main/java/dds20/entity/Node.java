@@ -2,6 +2,7 @@ package dds20.entity;
 
 import javax.persistence.*;
 import java.io.Serializable;
+import java.util.ArrayList;
 
 /**
  * Internal Node Representation
@@ -21,9 +22,21 @@ public class Node implements Serializable {
     private Long id;
 
     @Column(nullable = false)
-    private Boolean active;
+    private Boolean isCoordinator;
 
     @Column(nullable = false)
+    private Boolean isSubordinate;
+
+    @Column(nullable = false)
+    private String coordinator;
+
+    @Column(nullable = false)
+    private ArrayList<String> subordinates;
+
+    @Column
+    private Boolean active;
+
+    @Column
     private String dieAfter;
 
     @Column(nullable = false)
@@ -38,6 +51,26 @@ public class Node implements Serializable {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Boolean getIsCoordinator() { return isCoordinator; }
+
+    public void setIsCoordinator(Boolean isCoordinator) { this.isCoordinator = isCoordinator; }
+
+    public Boolean getIsSubordinate() { return isSubordinate; }
+
+    public void setIsSubordinate(Boolean isSubordinate) { this.isSubordinate = isSubordinate; }
+
+    public String getCoordinator() { return coordinator; }
+
+    public void setCoordinator(String coordinator) { this.coordinator = coordinator; }
+
+    public ArrayList<String> getSubordinates() {
+        return subordinates;
+    }
+
+    public void setSubordinates(ArrayList<String> subordinates) {
+        this.subordinates = subordinates;
     }
 
     public Boolean getActive() { return active; }

@@ -8,9 +8,8 @@ public class DataGetDTO {
     private String message;
     private String node;
     private Integer transId;
-    private Integer coordId;
-    private Integer senderId;
-    private ArrayList<Integer> subordinates;
+    private String coordinator;
+    private ArrayList<String> subordinates;
     private Boolean isStatus;
 
     public Long getId() {
@@ -45,27 +44,19 @@ public class DataGetDTO {
         this.transId = transId;
     }
 
-    public Integer getCoordId() {
-        return coordId;
+    public String getCoordinator() {
+        return coordinator;
     }
 
-    public void setCoordId(Integer coordId) {
-        this.coordId = coordId;
+    public void setCoordinator(String coordinator) {
+        this.coordinator = coordinator;
     }
 
-    public Integer getSenderId() {
-        return senderId;
-    }
-
-    public void setSenderId(Integer senderId) {
-        this.senderId = senderId;
-    }
-
-    public ArrayList<Integer> getSubordinates() {
+    public ArrayList<String> getSubordinates() {
         return subordinates;
     }
 
-    public void setSubordinates(ArrayList<Integer> subordinates) {
+    public void setSubordinates(ArrayList<String> subordinates) {
         this.subordinates = subordinates;
     }
 

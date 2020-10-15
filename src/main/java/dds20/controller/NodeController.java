@@ -29,11 +29,27 @@ public class NodeController {
         return DTOMapper.INSTANCE.convertEntityToNodeGetDTO(node);
     }
 
+    @PostMapping("/setup")
+    @ResponseStatus(HttpStatus.OK)
+    @ResponseBody
+    public void postSetup(SetupPostDTO setupPostDTO) {
+        Node node = DTOMapper.INSTANCE.convertSetupPostDTOtoEntity(setupPostDTO);
+        nodeService.saveNode(node);
+    }
+
+    @PostMapping("/start")
+    @ResponseStatus(HttpStatus.OK)
+    @ResponseBody
+    public void postStart() {
+        //TODO: send prepare to all subordinates
+
     @PostMapping("/settings")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postMessage(@RequestBody SettingsPostDTO settingsPostDTO) {
-        Node userInput = DTOMapper.INSTANCE.convertSettingsPostDTOtoEntity(settingsPostDTO);
-        nodeService.createNode(userInput);
+        Node node = nodeService.getNode();
+        node.setActive(settingsPostDTO.getActive());
+        node.setDieAfter(settingsPostDTO.getDieAfter());
+        nodeService.saveNode(node);
     }
 }
