@@ -35,6 +35,7 @@ public interface DTOMapper {
     @Mapping(source = "dieAfter", target = "dieAfter")
     NodeGetDTO convertEntityToNodeGetDTO(Node node);
 
+    @Mapping(source = "node", target = "node")
     @Mapping(source = "isCoordinator", target = "isCoordinator")
     @Mapping(source = "isSubordinate", target = "isSubordinate")
     @Mapping(source = "coordinator", target = "coordinator")

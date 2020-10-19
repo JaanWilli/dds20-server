@@ -4,10 +4,19 @@ import java.util.ArrayList;
 
 public class SetupPostDTO {
 
+    private String node;
     private Boolean isCoordinator;
     private Boolean isSubordinate;
     private String coordinator;
     private ArrayList<String> subordinates;
+
+    public String getNode() {
+        return node;
+    }
+
+    public void setNode(String node) {
+        this.node = node;
+    }
 
     public Boolean getIsCoordinator() {
         return isCoordinator;
@@ -40,5 +49,4 @@ public class SetupPostDTO {
     public void setSubordinates(ArrayList<String> subordinates) {
         this.subordinates = subordinates;
     }
-
 }
