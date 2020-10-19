@@ -36,7 +36,7 @@ public class Node implements Serializable {
     @Column
     private String dieAfter;
 
-    @Column(nullable = false)
+    @Column(nullable = true) //TODO: Change this again after api specifications changed
     private String node;
 
     @Column(nullable = false)
