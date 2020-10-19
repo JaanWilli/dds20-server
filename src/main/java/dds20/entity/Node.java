@@ -28,9 +28,6 @@ public class Node implements Serializable {
     private Boolean isSubordinate;
 
     @Column(nullable = false)
-    private String coordinator;
-
-    @Column(nullable = false)
     private ArrayList<String> subordinates;
 
     @Column
@@ -87,13 +84,5 @@ public class Node implements Serializable {
 
     public void setNode(String node) {
         this.node = node;
-    }
-
-    public String getCoordinator() {
-        return coordinator;
-    }
-
-    public void setCoordinator(String coordinator) {
-        this.coordinator = coordinator;
     }
 }

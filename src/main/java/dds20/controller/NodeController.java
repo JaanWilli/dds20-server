@@ -42,6 +42,7 @@ public class NodeController {
     @ResponseBody
     public void postStart() {
         //TODO: send prepare to all subordinates
+    }
 
     @PostMapping("/settings")
     @ResponseStatus(HttpStatus.OK)

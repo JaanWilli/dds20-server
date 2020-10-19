@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
+
 /**
  * Data Service
  * This class is the "worker" and responsible for all functionality related to the data
@@ -48,7 +50,7 @@ public class DataService {
         return this.dataRepository.findAll();
     }
 
-    public Data saveData(Data newData) {
+    public void saveData(Data newData) {
         // saves the given entity but data is only persisted in the database once flush() is called
         newData = dataRepository.save(newData);
         dataRepository.flush();
