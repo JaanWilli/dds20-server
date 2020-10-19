@@ -32,7 +32,7 @@ public class NodeController {
     @PostMapping("/setup")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public void postSetup(SetupPostDTO setupPostDTO) {
+    public void postSetup(@RequestBody SetupPostDTO setupPostDTO) {
         Node node = DTOMapper.INSTANCE.convertSetupPostDTOtoEntity(setupPostDTO);
         nodeService.saveNode(node);
     }
