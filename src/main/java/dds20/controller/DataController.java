@@ -1,11 +1,13 @@
 package dds20.controller;
 
 import dds20.entity.Data;
+import dds20.entity.Node;
 import dds20.rest.dto.DataGetDTO;
 import dds20.rest.dto.InquiryPostDTO;
 import dds20.rest.dto.MessagePostDTO;
 import dds20.rest.mapper.DTOMapper;
 import dds20.service.DataService;
+import dds20.service.NodeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,9 +23,11 @@ import java.util.List;
 public class DataController {
 
     private final DataService dataService;
+    private final NodeService nodeService;
 
-    DataController(DataService dataService) {
+    DataController(DataService dataService, NodeService nodeService) {
         this.dataService = dataService;
+        this.nodeService = nodeService;
     }
 
     @PostMapping("/start")
@@ -53,20 +57,28 @@ public class DataController {
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postMessage(@RequestBody MessagePostDTO messagePostDTO) {
-        messagePostDTO.setIsStatus(false);
-        Data data = DTOMapper.INSTANCE.convertMessagePostDTOtoEntity(messagePostDTO);
-        dataService.saveData(data);
+        if (nodeService.getNode().getActive()) {
+            // handle message
+            messagePostDTO.setIsStatus(false);
+            Data data = DTOMapper.INSTANCE.convertMessagePostDTOtoEntity(messagePostDTO);
+            dataService.saveData(data);
+        }
+
+        // die
+        Node node = nodeService.getNode();
+        if (node.getDieAfter().equals(messagePostDTO.getMessage())) {
+            node.setActive(false);
+            nodeService.saveNode(node);
+        }
     }
 
     @PostMapping("/inquiry")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postInquiry(@RequestBody InquiryPostDTO inquiryPostDTO) {
-//        Data data = dataService.getDataFromTransId(inquiryPostDTO.getTransId());
-//        MessagePostDTO result = new MessagePostDTO();
-//        result.setTransId(data.getTransId());
-//        result.setMessage(data.getMessage());
-//        return result;
-        //TODO: send appropriate message to the node that sent the inquiry.
+        if (nodeService.getNode().getActive()) {
+            Data data = dataService.getDataFromTransId(inquiryPostDTO.getTransId());
+            dataService.sendMessage(inquiryPostDTO.getSender(), data.getMessage(), inquiryPostDTO.getTransId());
+        }
     }
 }
