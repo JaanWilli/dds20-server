@@ -36,10 +36,6 @@ public class NodeService {
     }
 
     public void saveNode(Node newNode) {
-        // saves the given entity but data is only persisted in the database once flush() is called
-        newNode = nodeRepository.save(newNode);
-        nodeRepository.flush();
-
-        log.debug("Created Information for Node: {}", newNode);
+        nodeRepository.saveAndFlush(newNode);
     }
 }

@@ -50,7 +50,7 @@ public class NodeController {
     public void postMessage(@RequestBody SettingsPostDTO settingsPostDTO) {
         // recovery process
         Node node = nodeService.getNode();
-        if (!node.getActive() && settingsPostDTO.getActive()) {
+        if (node.getActive() != null && !node.getActive() && settingsPostDTO.getActive()) {
             List<Data> dataList = dataService.getAllData();
             List<Data> dataListNotStatus = new ArrayList<>();
             for (Data data : dataList) {

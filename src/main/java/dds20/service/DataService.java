@@ -4,17 +4,18 @@ import dds20.entity.Data;
 import dds20.entity.Node;
 import dds20.repository.DataRepository;
 import dds20.repository.NodeRepository;
-import dds20.rest.dto.InquiryPostDTO;
-import dds20.rest.dto.MessagePostDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
+import java.util.*;
 
 /**
  * Data Service
@@ -30,6 +31,14 @@ public class DataService {
     private final DataRepository dataRepository;
     private final NodeRepository nodeRepository;
 
+    private static final String PREPARE = "PREPARE";
+    private static final String COMMIT = "COMMIT";
+    private static final String YES = "YES";
+    private static final String NO = "NO";
+    private static final String ACK = "ACK";
+
+    private final List<String> yesVotes = new ArrayList<>();
+
     @Autowired
     private final RestTemplate restTemplate;
 
@@ -42,44 +51,145 @@ public class DataService {
         this.restTemplate = restTemplate;
     }
 
-    public Data getData() {
-        return this.dataRepository.findTopByOrderByIdDesc();
-    }
-
     public List<Data> getAllData() {
         return this.dataRepository.findAll();
     }
 
     public void saveData(Data newData) {
-        // saves the given entity but data is only persisted in the database once flush() is called
-        newData = dataRepository.save(newData);
-        dataRepository.flush();
-
-        log.debug("Created Information for Data: {}", newData);
+        dataRepository.saveAndFlush(newData);
     }
 
     public Data getDataFromTransId(Integer transId) {
         return this.dataRepository.findByTransId(transId);
     }
 
+    public void startTransaction() {
+        for (String s : getSubordinates()) {
+            Data log = new Data();
+            log.setIsStatus(true);
+            log.setMessage(String.format("Sending \"%s\" to %s", PREPARE, s));
+            saveData(log);
+            sendMessage(s, PREPARE, 1);
+        }
+    }
+
+    private void handlePrepare() {
+        Node node = getNode();
+
+        Data log = new Data();
+        log.setIsStatus(true);
+        log.setMessage(String.format("Sending \"%s\" to %s", YES, node.getCoordinator()));
+        saveData(log);
+
+        sendMessage(node.getCoordinator(), YES, 1);
+    }
+
+    private void handleYes(Data data) {
+        yesVotes.add(data.getNode());
+        Node node = getNode();
+
+        if (node.getSubordinates().size() == yesVotes.size()) {
+            for (String s : node.getSubordinates()) {
+                Data log = new Data();
+                log.setIsStatus(true);
+                log.setMessage(String.format("Sending \"%s\" to %s", COMMIT, s));
+                saveData(log);
+
+                sendMessage(s, COMMIT, 1);
+            }
+        }
+    }
+
+    private void handleNo() {
+        // TODO later
+    }
+
+    private void handleCommit() {
+        Node node = getNode();
+
+        Data log = new Data();
+        log.setIsStatus(true);
+        log.setMessage(String.format("Sending \"%s\" to %s", ACK, node.getCoordinator()));
+        saveData(log);
+
+        sendMessage(node.getCoordinator(), ACK, 1);
+    }
+
+    private void handleAbort() {
+        // TODO later
+    }
+
+    public void handleMessage(Data data) {
+
+        Data log = new Data();
+        log.setIsStatus(true);
+        log.setMessage(String.format("Received \"%s\" from %s", data.getMessage(), data.getNode()));
+        saveData(log);
+
+        data.setIsStatus(false);
+        saveData(data);
+
+        switch (data.getMessage().toLowerCase()) {
+            case "prepare":
+                handlePrepare();
+            case "yes":
+                handleYes(data);
+            case "no":
+                handleNo();
+            case "commit":
+                handleCommit();
+            case "abort":
+                handleAbort();
+            case "ack":
+                // nothing
+        }
+    }
+
+    private List<String> getSubordinates() {
+        return nodeRepository.findTopByOrderByIdDesc().getSubordinates();
+    }
+
+    private Data getData() {
+        return this.dataRepository.findTopByOrderByIdDesc();
+    }
+
+    private Node getNode() {
+        return this.nodeRepository.findTopByOrderByIdDesc();
+    }
+
     public void sendMessage(String recipient, String msg, int transId) {
-        Node node = nodeRepository.findTopByOrderByIdDesc();
+        Node node = getNode();
 
-        MessagePostDTO message = new MessagePostDTO();
-        message.setMessage(msg);
-        message.setNode(node.getNode());
-        message.setCoordinator(node.getCoordinator());
-        message.setTransId(transId);
+        MultiValueMap<String, String> message= new LinkedMultiValueMap<>();
+        message.add("message", msg);
+        message.add("node", node.getNode());
+        message.add("coordinator", node.getCoordinator());
+        message.add("transId", String.valueOf(transId));
 
-        restTemplate.postForObject(recipient, message, String.class);
+        HttpEntity<Map> request = getRequest(message);
+
+        try {
+            restTemplate.exchange(recipient + "/message", HttpMethod.POST, request, String.class);
+        } catch (Exception e) {}
     }
 
     public void sendInquiry(String recipient, int transId) {
-        Node node = nodeRepository.findTopByOrderByIdDesc();
-        InquiryPostDTO inquiry = new InquiryPostDTO();
-        inquiry.setSender(node.getNode());
-        inquiry.setTransId(transId);
+        Node node = getNode();
 
-        restTemplate.postForObject(recipient, inquiry, String.class);
+        MultiValueMap<String, String> message = new LinkedMultiValueMap<>();
+        message.add("sender", node.getNode());
+        message.add("transId", String.valueOf(transId));
+
+        HttpEntity<Map> request = getRequest(message);
+
+        try {
+            restTemplate.exchange(recipient + "/message", HttpMethod.POST, request, String.class);
+        } catch (Exception e) {}
+    }
+
+    private HttpEntity<Map> getRequest(MultiValueMap<String,String> message) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", MediaType.APPLICATION_JSON_VALUE);
+        return new HttpEntity<>(message.toSingleValueMap(), headers);
     }
 }

@@ -38,7 +38,7 @@ public class DataController {
         startMessage.setIsStatus(true);
         startMessage.setMessage("Received start command from client");
         dataService.saveData(startMessage);
-        //TODO: send prepare to all subordinates
+        dataService.startTransaction();
     }
 
     @GetMapping("/info")
@@ -59,9 +59,8 @@ public class DataController {
     public void postMessage(@RequestBody MessagePostDTO messagePostDTO) {
         if (nodeService.getNode().getActive()) {
             // handle message
-            messagePostDTO.setIsStatus(false);
             Data data = DTOMapper.INSTANCE.convertMessagePostDTOtoEntity(messagePostDTO);
-            dataService.saveData(data);
+            dataService.handleMessage(data);
         }
 
         // die

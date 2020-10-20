@@ -1,6 +1,7 @@
 package dds20.rest.dto;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class MessagePostDTO {
 
@@ -8,7 +9,7 @@ public class MessagePostDTO {
     private String node;
     private Integer transId;
     private String coordinator;
-    private ArrayList<String> subordinates;
+    private List<String> subordinates;
     private Boolean isStatus;
 
     public String getMessage() {
@@ -39,12 +40,12 @@ public class MessagePostDTO {
         this.coordinator = coordinator;
     }
 
-    public ArrayList<String> getSubordinates() {
+    public List<String> getSubordinates() {
         return subordinates;
         
     }
 
-    public void setSubordinates(ArrayList<String> subordinates) {
+    public void setSubordinates(List<String> subordinates) {
         this.subordinates = subordinates;
     }
 
