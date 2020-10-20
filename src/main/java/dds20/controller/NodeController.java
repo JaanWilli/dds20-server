@@ -37,13 +37,6 @@ public class NodeController {
         nodeService.saveNode(node);
     }
 
-    @PostMapping("/start")
-    @ResponseStatus(HttpStatus.OK)
-    @ResponseBody
-    public void postStart() {
-        //TODO: send prepare to all subordinates
-    }
-
     @PostMapping("/settings")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody

@@ -24,16 +24,16 @@ public class Data implements Serializable {
     @Column(nullable = false)
     private String message;
 
-    @Column(nullable = false)
+    @Column
     private String node;
 
-    @Column(nullable = false)
+    @Column
     private Integer transId;
 
-    @Column(nullable = false)
+    @Column
     private String coordinator;
 
-    @Column(nullable = false)
+    @Column
     private ArrayList<String> subordinates;
 
     @Column(nullable = false)

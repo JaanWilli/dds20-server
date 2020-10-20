@@ -26,6 +26,17 @@ public class DataController {
         this.dataService = dataService;
     }
 
+    @PostMapping("/start")
+    @ResponseStatus(HttpStatus.OK)
+    @ResponseBody
+    public void postStart() {
+        Data startMessage = new Data();
+        startMessage.setIsStatus(true);
+        startMessage.setMessage("Received start command from client");
+        dataService.saveData(startMessage);
+        //TODO: send prepare to all subordinates
+    }
+
     @GetMapping("/info")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
