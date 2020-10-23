@@ -144,16 +144,22 @@ public class DataService {
         switch (data.getMessage().toLowerCase()) {
             case "prepare":
                 handlePrepare();
+                break;
             case "yes":
                 handleYes(data);
+                break;
             case "no":
                 handleNo();
+                break;
             case "commit":
                 handleCommit();
+                break;
             case "abort":
                 handleAbort();
+                break;
             case "ack":
                 // nothing
+                break;
         }
     }
 
