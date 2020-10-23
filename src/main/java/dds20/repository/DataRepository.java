@@ -10,4 +10,6 @@ import java.util.List;
 public interface DataRepository extends JpaRepository<Data, Long> {
     Data findTopByOrderByIdDesc();
     Data findByTransId(Integer transId);
+    List<Data> findAllByIsStatus(Boolean status);
+    Data findTopByIsStatusFalseOrderByIdDesc();
 }

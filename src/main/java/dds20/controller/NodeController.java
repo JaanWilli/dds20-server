@@ -9,8 +9,6 @@ import dds20.service.NodeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Node Controller
@@ -51,26 +49,13 @@ public class NodeController {
         // recovery process
         Node node = nodeService.getNode();
         if (node.getActive() != null && !node.getActive() && settingsPostDTO.getActive()) {
-            List<Data> dataList = dataService.getAllData();
-            List<Data> dataListNotStatus = new ArrayList<>();
-            for (Data data : dataList) {
-                if (!data.getIsStatus()) {
-                    dataListNotStatus.add(data);
-                }
-            }
-            Data lastData = dataListNotStatus.get(0);
-            for (Data data : dataListNotStatus) {
-                if (data.getId() > lastData.getId()) {
-                    lastData = data;
-                }
-            }
-            String lastMessage = lastData.getMessage();
-            if (lastMessage.equals("prepare")) {
+            Data lastData = dataService.getLastDataEntry();
+            if (lastData.getMessage().equals("prepare")) {
                 dataService.sendInquiry(node.getCoordinator(), lastData.getTransId());
             }
-            if (lastMessage.equals("commit") || lastMessage.equals("abort")) {
+            if (lastData.getMessage().equals("commit") || lastData.getMessage().equals("abort")) {
                 for (String sub : node.getSubordinates()) {
-                    dataService.sendMessage(sub, lastMessage, lastData.getTransId());
+                    dataService.sendMessage(sub, lastData.getMessage(), lastData.getTransId());
                 }
             }
         }

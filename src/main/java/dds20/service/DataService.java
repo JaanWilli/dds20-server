@@ -55,12 +55,24 @@ public class DataService {
         return this.dataRepository.findAll();
     }
 
-    public void saveData(Data newData) {
-        dataRepository.saveAndFlush(newData);
+    public Data getLastDataEntry() {
+        return this.dataRepository.findTopByIsStatusFalseOrderByIdDesc();
     }
 
     public Data getDataFromTransId(Integer transId) {
         return this.dataRepository.findByTransId(transId);
+    }
+
+    public synchronized void saveData(Data newData) {
+        dataRepository.saveAndFlush(newData);
+    }
+
+    private Node getNode() {
+        return this.nodeRepository.findTopByOrderByIdDesc();
+    }
+
+    private List<String> getSubordinates() {
+        return nodeRepository.findTopByOrderByIdDesc().getSubordinates();
     }
 
     public void startTransaction() {
@@ -143,18 +155,6 @@ public class DataService {
             case "ack":
                 // nothing
         }
-    }
-
-    private List<String> getSubordinates() {
-        return nodeRepository.findTopByOrderByIdDesc().getSubordinates();
-    }
-
-    private Data getData() {
-        return this.dataRepository.findTopByOrderByIdDesc();
-    }
-
-    private Node getNode() {
-        return this.nodeRepository.findTopByOrderByIdDesc();
     }
 
     public void sendMessage(String recipient, String msg, int transId) {
