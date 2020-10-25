@@ -33,11 +33,14 @@ public class DataService {
 
     private static final String PREPARE = "PREPARE";
     private static final String COMMIT = "COMMIT";
+    private static final String ABORT = "ABORT";
     private static final String YES = "YES";
     private static final String NO = "NO";
     private static final String ACK = "ACK";
+    private static final String END = "END";
 
-    private final List<String> yesVotes = new ArrayList<>();
+    private final Map<String, String> votes = new HashMap<>();
+    private final List<String> acks = new ArrayList<>();
 
     @Autowired
     private final RestTemplate restTemplate;
@@ -51,115 +54,115 @@ public class DataService {
         this.restTemplate = restTemplate;
     }
 
-    public List<Data> getAllData() {
-        return this.dataRepository.findAll();
-    }
-
-    public Data getLastDataEntry() {
-        return this.dataRepository.findTopByIsStatusFalseOrderByIdDesc();
-    }
-
-    public Data getDataFromTransId(Integer transId) {
-        return this.dataRepository.findByTransId(transId);
-    }
-
-    public synchronized void saveData(Data newData) {
-        dataRepository.saveAndFlush(newData);
-    }
-
-    private Node getNode() {
-        return this.nodeRepository.findTopByOrderByIdDesc();
-    }
-
-    private List<String> getSubordinates() {
-        return nodeRepository.findTopByOrderByIdDesc().getSubordinates();
+    public void clearData() {
+        dataRepository.deleteAll();
+        dataRepository.flush();
+        votes.clear();
+        acks.clear();
     }
 
     public void startTransaction() {
         for (String s : getSubordinates()) {
-            Data log = new Data();
-            log.setIsStatus(true);
-            log.setMessage(String.format("Sending \"%s\" to %s", PREPARE, s));
-            saveData(log);
+            writeSendLog(PREPARE, s);
             sendMessage(s, PREPARE, 1);
+        }
+    }
+
+    public void handleMessage(Data data) {
+        writeReceiveLog(data.getMessage(), data.getNode());
+
+        switch (data.getMessage().toUpperCase()) {
+            case PREPARE:
+                handlePrepare();
+                break;
+            case YES:
+            case NO:
+                handleVote(data);
+                break;
+            case COMMIT:
+                handleCommit();
+                break;
+            case ABORT:
+                handleAbort();
+                break;
+            case ACK:
+                handleAck(data);
+                break;
         }
     }
 
     private void handlePrepare() {
         Node node = getNode();
+        String msg;
 
-        Data log = new Data();
-        log.setIsStatus(true);
-        log.setMessage(String.format("Sending \"%s\" to %s", YES, node.getCoordinator()));
-        saveData(log);
-
-        sendMessage(node.getCoordinator(), YES, 1);
+        if (node.getVote()) {
+            writeRecord(PREPARE);
+            msg = YES;
+        }
+        else {
+            writeRecord(ABORT);
+            msg = NO;
+        }
+        writeSendLog(msg, node.getCoordinator());
+        sendMessage(node.getCoordinator(), msg, 1);
     }
 
-    private void handleYes(Data data) {
-        yesVotes.add(data.getNode());
+    private void handleVote(Data data) {
         Node node = getNode();
 
-        if (node.getSubordinates().size() == yesVotes.size()) {
-            for (String s : node.getSubordinates()) {
-                Data log = new Data();
-                log.setIsStatus(true);
-                log.setMessage(String.format("Sending \"%s\" to %s", COMMIT, s));
-                saveData(log);
-
-                sendMessage(s, COMMIT, 1);
+        votes.put(data.getNode(), data.getMessage());
+        System.out.println("received " + data.getMessage() + " from " + data.getNode());
+        System.out.println("votes now contains: ");
+        votes.forEach((key, value) -> System.out.println(key + " -> " + value));
+        if (votes.keySet().size() == node.getSubordinates().size()) {
+            if (!votes.containsValue(NO)) {
+                writeLog("Received YES VOTE from all subordinates");
+                writeRecord(COMMIT);
+                for (String s : node.getSubordinates()) {
+                    writeSendLog(COMMIT, s);
+                    sendMessage(s, COMMIT, 1);
+                }
+            }
+            else {
+                writeLog("Received NO VOTE from at least one subordinate");
+                writeRecord(ABORT);
+                int c = 0;
+                for (Map.Entry<String, String> n : votes.entrySet()) {
+                    if (n.getValue().equalsIgnoreCase(YES)) {
+                        writeSendLog(ABORT, n.getKey());
+                        sendMessage(n.getKey(), ABORT, 1);
+                        c++;
+                    }
+                }
+                if (c == 0) {
+                    writeRecord(END);
+                }
             }
         }
-    }
 
-    private void handleNo() {
-        // TODO later
     }
 
     private void handleCommit() {
         Node node = getNode();
 
-        Data log = new Data();
-        log.setIsStatus(true);
-        log.setMessage(String.format("Sending \"%s\" to %s", ACK, node.getCoordinator()));
-        saveData(log);
-
+        writeRecord(COMMIT);
+        writeSendLog(ACK, node.getCoordinator());
         sendMessage(node.getCoordinator(), ACK, 1);
     }
 
     private void handleAbort() {
-        // TODO later
+        Node node = getNode();
+
+        writeRecord(ABORT);
+        writeSendLog(ACK, node.getCoordinator());
+        sendMessage(node.getCoordinator(), ACK, 1);
     }
 
-    public void handleMessage(Data data) {
-
-        Data log = new Data();
-        log.setIsStatus(true);
-        log.setMessage(String.format("Received \"%s\" from %s", data.getMessage(), data.getNode()));
-        saveData(log);
-
-        data.setIsStatus(false);
-        saveData(data);
-
-        switch (data.getMessage().toLowerCase()) {
-            case "prepare":
-                handlePrepare();
-                break;
-            case "yes":
-                handleYes(data);
-                break;
-            case "no":
-                handleNo();
-                break;
-            case "commit":
-                handleCommit();
-                break;
-            case "abort":
-                handleAbort();
-                break;
-            case "ack":
-                // nothing
-                break;
+    private void handleAck(Data data) {
+        acks.add(data.getNode());
+        int numberOfYesVotes = Collections.frequency(new ArrayList<>(votes.values()), YES);
+        if (acks.size() == numberOfYesVotes) {
+            writeRecord(END);
         }
     }
 
@@ -191,6 +194,58 @@ public class DataService {
         try {
             restTemplate.exchange(recipient + "/message", HttpMethod.POST, request, String.class);
         } catch (Exception e) {}
+    }
+
+    public List<Data> getAllData() {
+        return this.dataRepository.findAll();
+    }
+
+    public Data getLastDataEntry() {
+        return this.dataRepository.findTopByIsStatusFalseOrderByIdDesc();
+    }
+
+    public Data getDataFromTransId(Integer transId) {
+        return this.dataRepository.findByTransId(transId);
+    }
+
+    public synchronized void saveData(Data newData) {
+        dataRepository.saveAndFlush(newData);
+    }
+
+    private Node getNode() {
+        return this.nodeRepository.findTopByOrderByIdDesc();
+    }
+
+    private List<String> getSubordinates() {
+        return nodeRepository.findTopByOrderByIdDesc().getSubordinates();
+    }
+
+    private void writeSendLog(String msg, String recipient) {
+        Data log = new Data();
+        log.setIsStatus(true);
+        log.setMessage(String.format("Sending \"%s\" to %s", msg, recipient));
+        saveData(log);
+    }
+
+    private void writeReceiveLog(String msg, String sender) {
+        Data log = new Data();
+        log.setIsStatus(true);
+        log.setMessage(String.format("Receiving \"%s\" from %s", msg, sender));
+        saveData(log);
+    }
+
+    private void writeLog(String msg) {
+        Data log = new Data();
+        log.setIsStatus(true);
+        log.setMessage(msg);
+        saveData(log);
+    }
+
+    private void writeRecord(String msg) {
+        Data data = new Data();
+        data.setIsStatus(false);
+        data.setMessage(msg);
+        saveData(data);
     }
 
     private HttpEntity<Map> getRequest(MultiValueMap<String,String> message) {

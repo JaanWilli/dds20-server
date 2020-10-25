@@ -38,4 +38,9 @@ public class NodeService {
     public void saveNode(Node newNode) {
         nodeRepository.saveAndFlush(newNode);
     }
+
+    public void clearNode() {
+        nodeRepository.deleteAll();
+        nodeRepository.flush();
+    }
 }
