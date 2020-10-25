@@ -4,11 +4,12 @@ import dds20.entity.Data;
 import dds20.entity.Node;
 import dds20.repository.DataRepository;
 import dds20.repository.NodeRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
@@ -25,8 +26,6 @@ import java.util.*;
 @Service
 @Transactional
 public class DataService {
-
-    private final Logger log = LoggerFactory.getLogger(DataService.class);
 
     private final DataRepository dataRepository;
     private final NodeRepository nodeRepository;
@@ -109,12 +108,11 @@ public class DataService {
 
     private void handleVote(Data data) {
         Node node = getNode();
-
         votes.put(data.getNode(), data.getMessage());
-        System.out.println("received " + data.getMessage() + " from " + data.getNode());
-        System.out.println("votes now contains: ");
-        votes.forEach((key, value) -> System.out.println(key + " -> " + value));
+
+        // if all votes arrived
         if (votes.keySet().size() == node.getSubordinates().size()) {
+            // if at least one of the votes is NO
             if (!votes.containsValue(NO)) {
                 writeLog("Received YES VOTE from all subordinates");
                 writeRecord(COMMIT);
@@ -134,6 +132,7 @@ public class DataService {
                         c++;
                     }
                 }
+                // if no acks are necessary to write END
                 if (c == 0) {
                     writeRecord(END);
                 }
@@ -169,7 +168,7 @@ public class DataService {
     public void sendMessage(String recipient, String msg, int transId) {
         Node node = getNode();
 
-        MultiValueMap<String, String> message= new LinkedMultiValueMap<>();
+        MultiValueMap<String, String> message = new LinkedMultiValueMap<>();
         message.add("message", msg);
         message.add("node", node.getNode());
         message.add("coordinator", node.getCoordinator());
@@ -179,7 +178,9 @@ public class DataService {
 
         try {
             restTemplate.exchange(recipient + "/message", HttpMethod.POST, request, String.class);
-        } catch (Exception e) {}
+        }
+        catch (Exception ignored) {
+        }
     }
 
     public void sendInquiry(String recipient, int transId) {
@@ -193,7 +194,9 @@ public class DataService {
 
         try {
             restTemplate.exchange(recipient + "/message", HttpMethod.POST, request, String.class);
-        } catch (Exception e) {}
+        }
+        catch (Exception ignored) {
+        }
     }
 
     public List<Data> getAllData() {
@@ -248,7 +251,7 @@ public class DataService {
         saveData(data);
     }
 
-    private HttpEntity<Map> getRequest(MultiValueMap<String,String> message) {
+    private HttpEntity<Map> getRequest(MultiValueMap<String, String> message) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Type", MediaType.APPLICATION_JSON_VALUE);
         return new HttpEntity<>(message.toSingleValueMap(), headers);

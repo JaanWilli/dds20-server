@@ -2,7 +2,9 @@ package dds20.controller;
 
 import dds20.entity.Data;
 import dds20.entity.Node;
-import dds20.rest.dto.*;
+import dds20.rest.dto.NodeGetDTO;
+import dds20.rest.dto.SettingsPostDTO;
+import dds20.rest.dto.SetupPostDTO;
 import dds20.rest.mapper.DTOMapper;
 import dds20.service.DataService;
 import dds20.service.NodeService;

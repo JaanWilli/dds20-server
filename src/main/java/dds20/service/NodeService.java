@@ -1,8 +1,6 @@
 package dds20.service;
 
-import dds20.entity.Data;
 import dds20.entity.Node;
-import dds20.repository.DataRepository;
 import dds20.repository.NodeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 /**
  * Node Service
