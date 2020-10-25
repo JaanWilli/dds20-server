@@ -38,7 +38,10 @@ public class NodeController {
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postSetup(@RequestBody SetupPostDTO setupPostDTO) {
+        nodeService.clearNode();
+        dataService.clearData();
         Node node = DTOMapper.INSTANCE.convertSetupPostDTOtoEntity(setupPostDTO);
+        node.setVote(true);
         nodeService.saveNode(node);
     }
 
