@@ -63,6 +63,7 @@ public class NodeController {
         // settings
         node.setActive(settingsPostDTO.getActive());
         node.setDieAfter(settingsPostDTO.getDieAfter());
+        node.setVote(settingsPostDTO.getVote());
         nodeService.saveNode(node);
     }
 }

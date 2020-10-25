@@ -7,6 +7,7 @@ public class NodeGetDTO {
     private Long id;
     private Boolean active;
     private String dieAfter;
+    private Boolean vote;
 
     public Long getId() {
         return id;
@@ -30,5 +31,13 @@ public class NodeGetDTO {
 
     public void setDieAfter(String dieAfter) {
         this.dieAfter = dieAfter;
+    }
+
+    public Boolean getVote() {
+        return vote;
+    }
+
+    public void setVote(Boolean vote) {
+        this.vote = vote;
     }
 }

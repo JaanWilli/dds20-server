@@ -37,6 +37,9 @@ public class Node implements Serializable {
     @Column
     private String dieAfter;
 
+    @Column
+    private Boolean vote;
+
     @Column(nullable = false)
     private String node;
 
@@ -78,6 +81,14 @@ public class Node implements Serializable {
     public String getDieAfter() { return dieAfter; }
 
     public void setDieAfter(String dieAfter) { this.dieAfter = dieAfter; }
+
+    public Boolean getVote() {
+        return vote;
+    }
+
+    public void setVote(Boolean vote) {
+        this.vote = vote;
+    }
 
     public String getNode() {
         return node;

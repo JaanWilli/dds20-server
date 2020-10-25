@@ -33,6 +33,7 @@ public interface DTOMapper {
     @Mapping(source = "id", target = "id")
     @Mapping(source = "active", target = "active")
     @Mapping(source = "dieAfter", target = "dieAfter")
+    @Mapping(source = "vote", target = "vote")
     NodeGetDTO convertEntityToNodeGetDTO(Node node);
 
     @Mapping(source = "node", target = "node")

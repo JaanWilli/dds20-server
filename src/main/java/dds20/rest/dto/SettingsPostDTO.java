@@ -4,6 +4,7 @@ public class SettingsPostDTO {
 
     private Boolean active;
     private String dieAfter;
+    private Boolean vote;
 
     public Boolean getActive() {
         return active;
@@ -19,5 +20,13 @@ public class SettingsPostDTO {
 
     public void setDieAfter(String dieAfter) {
         this.dieAfter = dieAfter;
+    }
+
+    public Boolean getVote() {
+        return vote;
+    }
+
+    public void setVote(Boolean vote) {
+        this.vote = vote;
     }
 }
