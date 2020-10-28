@@ -1,7 +1,9 @@
 package dds20.service;
 
+import dds20.entity.Data;
 import dds20.entity.Node;
 import dds20.repository.NodeRepository;
+import dds20.rest.dto.SettingsPostDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,19 @@ public class NodeService {
 
     public Node getNode() {
         return this.nodeRepository.findTopByOrderByIdDesc();
+    }
+
+    public boolean isActive() {
+        Node node = getNode();
+        return (node != null) ? node.getActive() : false;
+    }
+
+    public void updateSettings(SettingsPostDTO newSettings) {
+        Node node = getNode();
+        node.setActive(newSettings.getActive());
+        node.setDieAfter(newSettings.getDieAfter());
+        node.setVote(newSettings.getVote());
+        saveNode(node);
     }
 
     public void saveNode(Node newNode) {

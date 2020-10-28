@@ -6,10 +6,12 @@ import dds20.repository.DataRepository;
 import dds20.repository.NodeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
@@ -40,9 +42,11 @@ public class DataService {
     private static final String ACK = "ACK";
     private static final String END = "END";
 
+    private List<Data> bufferMessages = new ArrayList<>();
     private final Map<String, String> votes = new HashMap<>();
     private final List<String> acks = new ArrayList<>();
     private Timer timer;
+
 
     @Autowired
     private final RestTemplate restTemplate;
@@ -59,6 +63,111 @@ public class DataService {
         this.timer = new Timer();
     }
 
+    @Scheduled(fixedRate = 1000)
+    public void allVotes() {
+        Node node = getNode();
+        if (node != null && node.getActive() && node.getIsCoordinator()) {
+            // if all votes arrived
+            if (votes.keySet().size() == node.getSubordinates().size()) {
+                // if at least one of the votes is NO
+                if (!votes.containsValue(NO)) {
+                    writeLog("Received YES VOTE from all subordinates");
+                    writeRecord(COMMIT);
+
+                    if (node.getDieAfter().equals("commit/abort")) {
+                        die();
+                        return;
+                    }
+
+                    for (String s : node.getSubordinates()) {
+                        writeSendLog(COMMIT, s);
+                        sendMessage(s, COMMIT, 1);
+                    }
+                    if (node.getDieAfter().equals("result")) {
+                        die();
+                    }
+                }
+                else {
+                    writeLog("Received NO VOTE from at least one subordinate");
+                    writeRecord(ABORT);
+
+                    if (node.getDieAfter().equals("commit/abort")) {
+                        die();
+                        return;
+                    }
+
+                    int c = 0;
+                    for (Map.Entry<String, String> n : votes.entrySet()) {
+                        if (n.getValue().equalsIgnoreCase(YES)) {
+                            writeSendLog(ABORT, n.getKey());
+                            sendMessage(n.getKey(), ABORT, 1);
+                            c++;
+                        }
+                    }
+                    if (node.getDieAfter().equals("result")) {
+                        die();
+                    }
+                    // if no acks are necessary to write END
+                    if (c == 0) {
+                        writeRecord(END);
+                    }
+                }
+                votes.clear();
+            }
+        }
+    }
+
+    @Scheduled(fixedRate = 1000)
+    public void allAcks() {
+        Node node = getNode();
+        if (node != null && node.getActive() && node.getIsCoordinator()) {
+            Data lastData = getLastDataEntry();
+            String lastMsg = lastData.getMessage();
+            if (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) {
+                int acksNeeded = Collections.frequency(new ArrayList<>(votes.values()), YES) +
+                        Collections.frequency(new ArrayList<>(votes.values()), null);
+                if (acks.size() == acksNeeded) {
+                    if (acksNeeded > 0) {
+                        writeLog("Received ACK from all subordinates");
+                    }
+                    else {
+                        writeLog("Received NO from all subordinates.");
+                    }
+                    writeRecord(END);
+                    acks.clear();
+                }
+            }
+        }
+    }
+
+    @Scheduled(fixedRate = 1000)
+    public void handleMessage() {
+        Node node = getNode();
+        if (node != null && node.getActive() && bufferMessages.size() > 0) {
+            Data data = bufferMessages.remove(0);
+            writeReceiveLog(data.getMessage(), data.getNode());
+
+            switch (data.getMessage().toUpperCase()) {
+                case PREPARE:
+                    handlePrepare();
+                    break;
+                case YES:
+                case NO:
+                    handleVote(data);
+                    break;
+                case COMMIT:
+                    handleCommit();
+                    break;
+                case ABORT:
+                    handleAbort();
+                    break;
+                case ACK:
+                    handleAck(data);
+                    break;
+            }
+        }
+    }
+
     public void clearData() {
         dataRepository.deleteAll();
         dataRepository.flush();
@@ -67,39 +176,27 @@ public class DataService {
     }
 
     public void startTransaction() {
-        // dieAfter sending prepare?
-        Node node = nodeService.getNode();
-        if (node.getDieAfter().equals("prepare")) {
-            die(node);
-        }
+        Data startMessage = new Data();
+        startMessage.setIsStatus(true);
+        startMessage.setMessage("Received start command from client");
+        saveData(startMessage);
+
+        Node node = getNode();
+        node.setActive(true);
+        nodeService.saveNode(node);
+
         for (String s : getSubordinates()) {
             writeSendLog(PREPARE, s);
             sendMessage(s, PREPARE, 1);
         }
 
+        if (node.getDieAfter().equals("prepare")) {
+            die();
+        }
     }
 
-    public void handleMessage(Data data, Node node) {
-        writeReceiveLog(data.getMessage(), data.getNode());
-
-        switch (data.getMessage().toUpperCase()) {
-            case PREPARE:
-                handlePrepare();
-                break;
-            case YES:
-            case NO:
-                handleVote(data);
-                break;
-            case COMMIT:
-                handleCommit();
-                break;
-            case ABORT:
-                handleAbort();
-                break;
-            case ACK:
-                handleAck(data);
-                break;
-        }
+    public void recieveMessage(Data data) {
+        bufferMessages.add(data);
     }
 
     private void handlePrepare() {
@@ -115,51 +212,33 @@ public class DataService {
             msg = NO;
         }
 
-        //dieAfter writing prepare
         if (node.getDieAfter().equals("prepare")) {
-            die(node);
+            die();
+            return;
         }
 
-        node = getNode();
-        if (node.getActive()) {
-            writeSendLog(msg, node.getCoordinator());
-            sendMessage(node.getCoordinator(), msg, 1);
-            //dieAfter sending vote
-            if (node.getDieAfter().equals("vote")) {
-                die(node);
-            }
+        writeSendLog(msg, node.getCoordinator());
+        sendMessage(node.getCoordinator(), msg, 1);
+
+        if (node.getDieAfter().equals("vote")) {
+            die();
         }
     }
 
     private void handleVote(Data data) {
-
-        Node node = getNode();
         votes.put(data.getNode(), data.getMessage());
-
-        if (node.getActive()) {
-            // if all votes arrived
-            if (votes.keySet().size() == node.getSubordinates().size()) {
-                evaluateVotes(votes, node);
-            }
-        }
-
     }
 
     private void handleCommit() {
         Node node = getNode();
-
         writeRecord(COMMIT);
 
-        //dieAfter writing commit
         if (node.getDieAfter().equals("commit/abort")) {
-            die(node);
+            die();
         }
 
-        node = getNode();
-        if (node.getActive()) {
-            writeSendLog(ACK, node.getCoordinator());
-            sendMessage(node.getCoordinator(), ACK, 1);
-        }
+        writeSendLog(ACK, node.getCoordinator());
+        sendMessage(node.getCoordinator(), ACK, 1);
     }
 
     private void handleAbort() {
@@ -167,101 +246,75 @@ public class DataService {
 
         writeRecord(ABORT);
 
-        //dieAfter writing abort
         if (node.getDieAfter().equals("commit/abort")) {
-            die(node);
+            die();
         }
 
-        node = getNode();
-        if (node.getActive()) {
-            writeSendLog(ACK, node.getCoordinator());
-            sendMessage(node.getCoordinator(), ACK, 1);
-        }
+        writeSendLog(ACK, node.getCoordinator());
+        sendMessage(node.getCoordinator(), ACK, 1);
     }
 
     private void handleAck(Data data) {
-        Node node = getNode();
+        acks.add(data.getNode());
+    }
 
-        if (node.getActive()) {
-            acks.add(data.getNode());
-            int numberOfYesVotes = Collections.frequency(new ArrayList<>(votes.values()), YES);
-            if (acks.size() == numberOfYesVotes) {
-                writeRecord(END);
+    public void startRecovery() {
+        Node node = getNode();
+        node.setActive(true);
+        nodeService.saveNode(node);
+
+        Data lastData = getLastDataEntry();
+        if (lastData == null) {
+            writeRecord(ABORT);
+            return;
+        }
+        String lastMsg = lastData.getMessage();
+        if (lastMsg.equalsIgnoreCase(PREPARE)) {
+            sendInquiry(node.getCoordinator(), 1);
+        }
+        else if (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) {
+            List<String> noAcks = getSubordinatesNoAck();
+            for (String sub : noAcks) {
+                sendMessage(sub, lastMsg, 1);
             }
         }
     }
 
-    public void evaluateVotes(Map<String, String> votes, Node node) {
-        // if at least one of the votes is NO
-        if (!votes.containsValue(NO)) {
-            writeLog("Received YES VOTE from all subordinates");
-            writeRecord(COMMIT);
-
-            //dieAfter writing commit
-            if (node.getDieAfter().equals("commit/abort")) {
-                die(node);
-            }
-
-            node = getNode();
-            if (node.getActive()) {
-                for (String s : node.getSubordinates()) {
-                    writeSendLog(COMMIT, s);
-                    sendMessage(s, COMMIT, 1);
-                }
-                //dieAfter result
-                if (node.getDieAfter().equals("result")) {
-                    die(node);
-                }
-            }
+    public void handleInquiry(String sender, int transId) {
+        writeReceiveLog("INQUIRY", sender);
+        Data lastData = getLastDataEntry();
+        if (lastData == null) {
+            votes.put(sender, null);
+            return;
+        }
+        String lastMsg = lastData.getMessage();
+        if (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) {
+            sendMessage(sender, lastMsg, transId);
         }
         else {
-            writeLog("Received NO VOTE from at least one subordinate");
-            writeRecord(ABORT);
-
-            //dieAfter writing abort
-            if (node.getDieAfter().equals("commit/abort")) {
-                die(node);
-            }
-
-            node = getNode();
-            if (node.getActive()) {
-
-                int c = 0;
-                for (Map.Entry<String, String> n : votes.entrySet()) {
-                    if (n.getValue().equalsIgnoreCase(YES)) {
-                        writeSendLog(ABORT, n.getKey());
-                        sendMessage(n.getKey(), ABORT, 1);
-                        c++;
-                    }
-                }
-                //dieAfter result
-                if (node.getDieAfter().equals("result")) {
-                    die(node);
-                }
-                // if no acks are necessary to write END
-                if (c == 0) {
-                    writeRecord(END);
-                }
-            }
+            sendMessage(sender, ABORT, transId);
         }
+    }
+
+    public void die() {
+        Node node = getNode();
+        node.setActive(false);
+        nodeService.saveNode(node);
+        writeLog("Node died");
+        startReviveTimer();
     }
 
     public void startReviveTimer() {
-        int milliseconds = 3000;
+        int milliseconds = 5000;
         this.timer = new Timer();
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
                 writeLog("Starting recovery process");
+                startRecovery();
             }
         };
         this.timer.schedule(timerTask, milliseconds);
-    }
-
-    public void die(Node node) {
-        node.setActive(false);
-        nodeService.saveNode(node);
-        startReviveTimer();
     }
 
     public void sendMessage(String recipient, String msg, int transId) {
@@ -292,7 +345,7 @@ public class DataService {
         HttpEntity<Map> request = getRequest(message);
 
         try {
-            restTemplate.exchange(recipient + "/message", HttpMethod.POST, request, String.class);
+            restTemplate.exchange(recipient + "/inquiry", HttpMethod.POST, request, String.class);
         }
         catch (Exception ignored) {
         }
@@ -306,10 +359,6 @@ public class DataService {
         return this.dataRepository.findTopByIsStatusFalseOrderByIdDesc();
     }
 
-    public Data getDataFromTransId(Integer transId) {
-        return this.dataRepository.findByTransId(transId);
-    }
-
     public synchronized void saveData(Data newData) {
         dataRepository.saveAndFlush(newData);
     }
@@ -320,6 +369,17 @@ public class DataService {
 
     private List<String> getSubordinates() {
         return nodeRepository.findTopByOrderByIdDesc().getSubordinates();
+    }
+
+    private List<String> getSubordinatesNoAck() {
+        List<String> ret = new ArrayList<>();
+        Node node = getNode();
+        for (String sub : node.getSubordinates()) {
+            if (!acks.contains(sub)) {
+                ret.add(sub);
+            }
+        }
+        return ret;
     }
 
     private void writeSendLog(String msg, String recipient) {

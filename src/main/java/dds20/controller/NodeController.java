@@ -42,6 +42,7 @@ public class NodeController {
     public void postSetup(@RequestBody SetupPostDTO setupPostDTO) {
         nodeService.clearNode();
         dataService.clearData();
+
         Node node = DTOMapper.INSTANCE.convertSetupPostDTOtoEntity(setupPostDTO);
         node.setVote(true);
         nodeService.saveNode(node);
@@ -51,24 +52,6 @@ public class NodeController {
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postMessage(@RequestBody SettingsPostDTO settingsPostDTO) {
-        // recovery process
-        Node node = nodeService.getNode();
-        if (node.getActive() != null && !node.getActive() && settingsPostDTO.getActive()) {
-            Data lastData = dataService.getLastDataEntry();
-            if (lastData.getMessage().equals("prepare")) {
-                dataService.sendInquiry(node.getCoordinator(), lastData.getTransId());
-            }
-            if (lastData.getMessage().equals("commit") || lastData.getMessage().equals("abort")) {
-                for (String sub : node.getSubordinates()) {
-                    dataService.sendMessage(sub, lastData.getMessage(), lastData.getTransId());
-                }
-            }
-        }
-
-        // settings
-        node.setActive(settingsPostDTO.getActive());
-        node.setDieAfter(settingsPostDTO.getDieAfter());
-        node.setVote(settingsPostDTO.getVote());
-        nodeService.saveNode(node);
+        nodeService.updateSettings(settingsPostDTO);
     }
 }

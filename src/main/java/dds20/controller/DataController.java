@@ -34,10 +34,6 @@ public class DataController {
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postStart() {
-        Data startMessage = new Data();
-        startMessage.setIsStatus(true);
-        startMessage.setMessage("Received start command from client");
-        dataService.saveData(startMessage);
         dataService.startTransaction();
     }
 
@@ -45,9 +41,8 @@ public class DataController {
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public List<DataGetDTO> getInfo() {
-        List<Data> allData = dataService.getAllData();
         List<DataGetDTO> result = new ArrayList<>();
-        for (Data data : allData) {
+        for (Data data : dataService.getAllData()) {
             result.add(DTOMapper.INSTANCE.convertEntityToDataGetDTO(data));
         }
         return result;
@@ -57,11 +52,10 @@ public class DataController {
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postMessage(@RequestBody MessagePostDTO messagePostDTO) {
-        if (nodeService.getNode().getActive()) {
+        if (nodeService.isActive()) {
             // handle message
-            Node node = nodeService.getNode();
             Data data = DTOMapper.INSTANCE.convertMessagePostDTOtoEntity(messagePostDTO);
-            dataService.handleMessage(data, node);
+            dataService.recieveMessage(data);
         }
     }
 
@@ -69,15 +63,8 @@ public class DataController {
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public void postInquiry(@RequestBody InquiryPostDTO inquiryPostDTO) {
-        if (nodeService.getNode().getActive()) {
-            Data data = dataService.getDataFromTransId(inquiryPostDTO.getTransId());
-            dataService.sendMessage(inquiryPostDTO.getSender(), data.getMessage(), inquiryPostDTO.getTransId());
+        if (nodeService.isActive()) {
+            dataService.handleInquiry(inquiryPostDTO.getSender(), inquiryPostDTO.getTransId());
         }
-    }
-
-    public void die(Node node) {
-        node.setActive(false);
-        nodeService.saveNode(node);
-        dataService.startReviveTimer();
     }
 }
