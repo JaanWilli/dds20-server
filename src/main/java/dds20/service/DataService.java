@@ -27,6 +27,8 @@ import java.util.*;
 @Transactional
 public class DataService {
 
+    private final NodeService nodeService;
+
     private final DataRepository dataRepository;
     private final NodeRepository nodeRepository;
 
@@ -40,17 +42,21 @@ public class DataService {
 
     private final Map<String, String> votes = new HashMap<>();
     private final List<String> acks = new ArrayList<>();
+    private Timer timer;
 
     @Autowired
     private final RestTemplate restTemplate;
 
     @Autowired
-    public DataService(@Qualifier("dataRepository") DataRepository dataRepository,
+    public DataService(NodeService nodeService,
+                       @Qualifier("dataRepository") DataRepository dataRepository,
                        @Qualifier("nodeRepository") NodeRepository nodeRepository,
                        RestTemplate restTemplate) {
+        this.nodeService = nodeService;
         this.dataRepository = dataRepository;
         this.nodeRepository = nodeRepository;
         this.restTemplate = restTemplate;
+        this.timer = new Timer();
     }
 
     public void clearData() {
@@ -61,13 +67,19 @@ public class DataService {
     }
 
     public void startTransaction() {
+        // dieAfter sending prepare?
+        Node node = nodeService.getNode();
+        if (node.getDieAfter().equals("prepare")) {
+            die(node);
+        }
         for (String s : getSubordinates()) {
             writeSendLog(PREPARE, s);
             sendMessage(s, PREPARE, 1);
         }
+
     }
 
-    public void handleMessage(Data data) {
+    public void handleMessage(Data data, Node node) {
         writeReceiveLog(data.getMessage(), data.getNode());
 
         switch (data.getMessage().toUpperCase()) {
@@ -102,40 +114,32 @@ public class DataService {
             writeRecord(ABORT);
             msg = NO;
         }
-        writeSendLog(msg, node.getCoordinator());
-        sendMessage(node.getCoordinator(), msg, 1);
+
+        //dieAfter writing prepare
+        if (node.getDieAfter().equals("prepare")) {
+            die(node);
+        }
+
+        node = getNode();
+        if (node.getActive()) {
+            writeSendLog(msg, node.getCoordinator());
+            sendMessage(node.getCoordinator(), msg, 1);
+            //dieAfter sending vote
+            if (node.getDieAfter().equals("vote")) {
+                die(node);
+            }
+        }
     }
 
     private void handleVote(Data data) {
+
         Node node = getNode();
         votes.put(data.getNode(), data.getMessage());
 
-        // if all votes arrived
-        if (votes.keySet().size() == node.getSubordinates().size()) {
-            // if at least one of the votes is NO
-            if (!votes.containsValue(NO)) {
-                writeLog("Received YES VOTE from all subordinates");
-                writeRecord(COMMIT);
-                for (String s : node.getSubordinates()) {
-                    writeSendLog(COMMIT, s);
-                    sendMessage(s, COMMIT, 1);
-                }
-            }
-            else {
-                writeLog("Received NO VOTE from at least one subordinate");
-                writeRecord(ABORT);
-                int c = 0;
-                for (Map.Entry<String, String> n : votes.entrySet()) {
-                    if (n.getValue().equalsIgnoreCase(YES)) {
-                        writeSendLog(ABORT, n.getKey());
-                        sendMessage(n.getKey(), ABORT, 1);
-                        c++;
-                    }
-                }
-                // if no acks are necessary to write END
-                if (c == 0) {
-                    writeRecord(END);
-                }
+        if (node.getActive()) {
+            // if all votes arrived
+            if (votes.keySet().size() == node.getSubordinates().size()) {
+                evaluateVotes(votes, node);
             }
         }
 
@@ -145,24 +149,119 @@ public class DataService {
         Node node = getNode();
 
         writeRecord(COMMIT);
-        writeSendLog(ACK, node.getCoordinator());
-        sendMessage(node.getCoordinator(), ACK, 1);
+
+        //dieAfter writing commit
+        if (node.getDieAfter().equals("commit/abort")) {
+            die(node);
+        }
+
+        node = getNode();
+        if (node.getActive()) {
+            writeSendLog(ACK, node.getCoordinator());
+            sendMessage(node.getCoordinator(), ACK, 1);
+        }
     }
 
     private void handleAbort() {
         Node node = getNode();
 
         writeRecord(ABORT);
-        writeSendLog(ACK, node.getCoordinator());
-        sendMessage(node.getCoordinator(), ACK, 1);
+
+        //dieAfter writing abort
+        if (node.getDieAfter().equals("commit/abort")) {
+            die(node);
+        }
+
+        node = getNode();
+        if (node.getActive()) {
+            writeSendLog(ACK, node.getCoordinator());
+            sendMessage(node.getCoordinator(), ACK, 1);
+        }
     }
 
     private void handleAck(Data data) {
-        acks.add(data.getNode());
-        int numberOfYesVotes = Collections.frequency(new ArrayList<>(votes.values()), YES);
-        if (acks.size() == numberOfYesVotes) {
-            writeRecord(END);
+        Node node = getNode();
+
+        if (node.getActive()) {
+            acks.add(data.getNode());
+            int numberOfYesVotes = Collections.frequency(new ArrayList<>(votes.values()), YES);
+            if (acks.size() == numberOfYesVotes) {
+                writeRecord(END);
+            }
         }
+    }
+
+    public void evaluateVotes(Map<String, String> votes, Node node) {
+        // if at least one of the votes is NO
+        if (!votes.containsValue(NO)) {
+            writeLog("Received YES VOTE from all subordinates");
+            writeRecord(COMMIT);
+
+            //dieAfter writing commit
+            if (node.getDieAfter().equals("commit/abort")) {
+                die(node);
+            }
+
+            node = getNode();
+            if (node.getActive()) {
+                for (String s : node.getSubordinates()) {
+                    writeSendLog(COMMIT, s);
+                    sendMessage(s, COMMIT, 1);
+                }
+                //dieAfter result
+                if (node.getDieAfter().equals("result")) {
+                    die(node);
+                }
+            }
+        }
+        else {
+            writeLog("Received NO VOTE from at least one subordinate");
+            writeRecord(ABORT);
+
+            //dieAfter writing abort
+            if (node.getDieAfter().equals("commit/abort")) {
+                die(node);
+            }
+
+            node = getNode();
+            if (node.getActive()) {
+
+                int c = 0;
+                for (Map.Entry<String, String> n : votes.entrySet()) {
+                    if (n.getValue().equalsIgnoreCase(YES)) {
+                        writeSendLog(ABORT, n.getKey());
+                        sendMessage(n.getKey(), ABORT, 1);
+                        c++;
+                    }
+                }
+                //dieAfter result
+                if (node.getDieAfter().equals("result")) {
+                    die(node);
+                }
+                // if no acks are necessary to write END
+                if (c == 0) {
+                    writeRecord(END);
+                }
+            }
+        }
+    }
+
+    public void startReviveTimer() {
+        int milliseconds = 3000;
+        this.timer = new Timer();
+        TimerTask timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                writeLog("Starting recovery process");
+            }
+        };
+        this.timer.schedule(timerTask, milliseconds);
+    }
+
+    public void die(Node node) {
+        node.setActive(false);
+        nodeService.saveNode(node);
+        startReviveTimer();
     }
 
     public void sendMessage(String recipient, String msg, int transId) {

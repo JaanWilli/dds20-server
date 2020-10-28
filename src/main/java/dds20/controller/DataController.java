@@ -59,15 +59,9 @@ public class DataController {
     public void postMessage(@RequestBody MessagePostDTO messagePostDTO) {
         if (nodeService.getNode().getActive()) {
             // handle message
+            Node node = nodeService.getNode();
             Data data = DTOMapper.INSTANCE.convertMessagePostDTOtoEntity(messagePostDTO);
-            dataService.handleMessage(data);
-        }
-
-        // die
-        Node node = nodeService.getNode();
-        if (node.getDieAfter().equals(messagePostDTO.getMessage())) {
-            node.setActive(false);
-            nodeService.saveNode(node);
+            dataService.handleMessage(data, node);
         }
     }
 
@@ -79,5 +73,11 @@ public class DataController {
             Data data = dataService.getDataFromTransId(inquiryPostDTO.getTransId());
             dataService.sendMessage(inquiryPostDTO.getSender(), data.getMessage(), inquiryPostDTO.getTransId());
         }
+    }
+
+    public void die(Node node) {
+        node.setActive(false);
+        nodeService.saveNode(node);
+        dataService.startReviveTimer();
     }
 }
