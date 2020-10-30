@@ -45,6 +45,7 @@ public class NodeController {
 
         Node node = DTOMapper.INSTANCE.convertSetupPostDTOtoEntity(setupPostDTO);
         node.setVote(true);
+        node.setActive(true);
         nodeService.saveNode(node);
     }
 

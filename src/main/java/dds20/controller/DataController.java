@@ -1,7 +1,6 @@
 package dds20.controller;
 
 import dds20.entity.Data;
-import dds20.entity.Node;
 import dds20.rest.dto.DataGetDTO;
 import dds20.rest.dto.InquiryPostDTO;
 import dds20.rest.dto.MessagePostDTO;
@@ -55,7 +54,7 @@ public class DataController {
         if (nodeService.isActive()) {
             // handle message
             Data data = DTOMapper.INSTANCE.convertMessagePostDTOtoEntity(messagePostDTO);
-            dataService.recieveMessage(data);
+            dataService.receiveMessage(data);
         }
     }
 
