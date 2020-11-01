@@ -244,6 +244,7 @@ public class DataService {
 
         if (node.getDieAfter().equals("commit/abort")) {
             die();
+            return;
         }
 
         writeSendLog(ACK, node.getCoordinator());
@@ -279,11 +280,13 @@ public class DataService {
         }
         String lastMsg = lastData.getMessage();
         if (lastMsg.equalsIgnoreCase(PREPARE)) {
+            writeSendLog("INQURY", node.getCoordinator());
             sendInquiry(node.getCoordinator(), 1);
         }
         else if (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) {
             List<String> noAcks = getSubordinatesNoAck();
             for (String sub : noAcks) {
+                writeSendLog(lastMsg, sub);
                 sendMessage(sub, lastMsg, 1);
             }
         }
