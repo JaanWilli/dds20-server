@@ -70,6 +70,7 @@ public class DataService {
         if (node != null && node.getActive() && node.getIsCoordinator()) {
             // if all votes arrived
             if (votes.keySet().size() == node.getSubordinates().size()) {
+                timer.cancel();
                 // if at least one of the votes is NO
                 if (!votes.containsValue(NO)) {
                     votes.clear();
@@ -90,7 +91,7 @@ public class DataService {
                         die();
                         return;
                     }
-                    startReviveTimer(5000);
+                    startTimer(5000, "Not all acknowledgements received");
                 }
                 else {
                     writeLog("Received NO VOTE from at least one subordinate");
@@ -98,12 +99,13 @@ public class DataService {
 
                     if (node.getDieAfter().equals("commit/abort")) {
                         die();
+                        votes.clear();
                         return;
                     }
 
                     int c = 0;
                     for (Map.Entry<String, String> n : votes.entrySet()) {
-                        if (n.getValue().equalsIgnoreCase(YES)) {
+                        if (n.getValue() == null || n.getValue().equalsIgnoreCase(YES)) {
                             writeSendLog(ABORT, n.getKey());
                             sendMessage(n.getKey(), ABORT, 1);
                             acksNeeded.add(n.getKey());
@@ -201,7 +203,9 @@ public class DataService {
 
         if (node.getDieAfter().equals("prepare")) {
             die();
+            return;
         }
+        startTimer(5000, "Not all votes received");
     }
 
     public void receiveMessage(Data data) {
@@ -230,7 +234,7 @@ public class DataService {
         sendMessage(node.getCoordinator(), msg, 1);
 
         if (msg.equals(YES)) {
-            startReviveTimer(5000);
+            startTimer(5000, "No response after vote");
         }
 
         if (node.getDieAfter().equals("vote")) {
@@ -294,7 +298,7 @@ public class DataService {
                 writeSendLog(lastMsg, sub);
                 sendMessage(sub, lastMsg, 1);
             }
-            startReviveTimer(5000);
+            startTimer(5000, "Not all acknowledgements received");
         }
     }
 
@@ -325,15 +329,20 @@ public class DataService {
         node.setDieAfter("never");
         nodeService.saveNode(node);
         writeLog("Node died");
-        startReviveTimer(3000);
+        startTimer(3000);
     }
 
-    public void startReviveTimer(int ms) {
+    public void startTimer(int ms) {
+        startTimer(ms, "Node recovered");
+    }
+
+    public void startTimer(int ms, String msg) {
+        timer.cancel();
         this.timer = new Timer();
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
-                writeLog("Starting recovery process");
+                writeLog(msg);
                 startRecovery();
             }
         };
