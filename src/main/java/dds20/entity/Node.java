@@ -28,7 +28,7 @@ public class Node implements Serializable {
     @Column(nullable = false)
     private Boolean isSubordinate;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     private List<String> subordinates = new ArrayList<String>();
 
     @Column
