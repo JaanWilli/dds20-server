@@ -44,7 +44,7 @@ public class DataService {
 
     private final List<Data> bufferMessages = new ArrayList<>();
     private final Map<String, String> votes = new HashMap<>();
-    private final List<String> acksNeeded = new ArrayList<>();
+    private List<String> acksNeeded = new ArrayList<>();
     private final List<String> acksReceived = new ArrayList<>();
     private Timer timer;
 
@@ -72,6 +72,7 @@ public class DataService {
             if (votes.keySet().size() == node.getSubordinates().size()) {
                 // if at least one of the votes is NO
                 if (!votes.containsValue(NO)) {
+                    votes.clear();
                     writeLog("Received YES VOTE from all subordinates");
                     writeRecord(COMMIT);
 
@@ -87,7 +88,9 @@ public class DataService {
                     }
                     if (node.getDieAfter().equals("result")) {
                         die();
+                        return;
                     }
+                    startReviveTimer(5000);
                 }
                 else {
                     writeLog("Received NO VOTE from at least one subordinate");
@@ -107,15 +110,16 @@ public class DataService {
                             c++;
                         }
                     }
+                    votes.clear();
                     if (node.getDieAfter().equals("result")) {
                         die();
+                        return;
                     }
                     // if no acks are necessary to write END
                     if (c == 0) {
                         writeRecord(END);
                     }
                 }
-                votes.clear();
             }
         }
     }
@@ -129,13 +133,9 @@ public class DataService {
                 if (lastData != null) {
                     String lastMsg = lastData.getMessage();
                     if (lastMsg != null && (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT))) {
-                        if (acksReceived.size() == acksNeeded.size()) {
-                            if (acksNeeded.size() > 0) {
-                                writeLog("Received ACK from all subordinates");
-                            }
-                            else {
-                                writeLog("Received NO from all subordinates.");
-                            }
+                        if (acksReceived.size() > 0 && acksReceived.size() == acksNeeded.size()) {
+                            timer.cancel();
+                            writeLog("Received ACK from all subordinates");
                             writeRecord(END);
                             acksReceived.clear();
                             acksNeeded.clear();
@@ -229,6 +229,10 @@ public class DataService {
         writeSendLog(msg, node.getCoordinator());
         sendMessage(node.getCoordinator(), msg, 1);
 
+        if (msg.equals(YES)) {
+            startReviveTimer(5000);
+        }
+
         if (node.getDieAfter().equals("vote")) {
             die();
         }
@@ -283,12 +287,14 @@ public class DataService {
             writeSendLog("INQURY", node.getCoordinator());
             sendInquiry(node.getCoordinator(), 1);
         }
-        else if (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) {
-            List<String> noAcks = getSubordinatesNoAck();
+        else if ((lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) &&
+            node.getIsCoordinator()) {
+            List<String> noAcks = getSubordinatesNoAck(node.getSubordinates());
             for (String sub : noAcks) {
                 writeSendLog(lastMsg, sub);
                 sendMessage(sub, lastMsg, 1);
             }
+            startReviveTimer(5000);
         }
     }
 
@@ -303,6 +309,9 @@ public class DataService {
         if (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) {
             writeSendLog(lastMsg, sender);
             sendMessage(sender, lastMsg, transId);
+            if (!acksNeeded.contains(sender)) {
+                acksNeeded.add(sender);
+            }
         }
         else {
             writeSendLog(ABORT, sender);
@@ -313,13 +322,13 @@ public class DataService {
     public void die() {
         Node node = getNode();
         node.setActive(false);
+        node.setDieAfter("never");
         nodeService.saveNode(node);
         writeLog("Node died");
-        startReviveTimer();
+        startReviveTimer(3000);
     }
 
-    public void startReviveTimer() {
-        int milliseconds = 5000;
+    public void startReviveTimer(int ms) {
         this.timer = new Timer();
         TimerTask timerTask = new TimerTask() {
             @Override
@@ -328,7 +337,7 @@ public class DataService {
                 startRecovery();
             }
         };
-        this.timer.schedule(timerTask, milliseconds);
+        this.timer.schedule(timerTask, ms);
     }
 
     public void sendMessage(String recipient, String msg, int transId) {
@@ -385,12 +394,14 @@ public class DataService {
         return nodeRepository.findTopByOrderByIdDesc().getSubordinates();
     }
 
-    private List<String> getSubordinatesNoAck() {
+    private List<String> getSubordinatesNoAck(List<String> subordinates) {
         List<String> ret = new ArrayList<>();
-        Node node = getNode();
-        for (String sub : node.getSubordinates()) {
+        for (String sub : subordinates) {
             if (!acksReceived.contains(sub)) {
                 ret.add(sub);
+                if (!acksNeeded.contains(sub)) {
+                    acksNeeded.add(sub);
+                }
             }
         }
         return ret;
