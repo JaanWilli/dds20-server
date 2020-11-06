@@ -247,6 +247,7 @@ public class DataService {
     }
 
     private void handleCommit() {
+        timer.cancel();
         Node node = getNode();
         writeRecord(COMMIT);
 
@@ -260,8 +261,8 @@ public class DataService {
     }
 
     private void handleAbort() {
+        timer.cancel();
         Node node = getNode();
-
         writeRecord(ABORT);
 
         if (node.getDieAfter().equals("commit/abort")) {
