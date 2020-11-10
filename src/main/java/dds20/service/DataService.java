@@ -42,6 +42,11 @@ public class DataService {
     private static final String ACK = "ACK";
     private static final String END = "END";
 
+    private static final int respawnTimer = 3000;
+    private static final int ackTimer = 8000;
+    private static final int voteTimer = 8000;
+    private static final int responseTimer = 8000;
+
     private final List<Data> bufferMessages = new ArrayList<>();
     private final Map<String, String> votes = new HashMap<>();
     private List<String> acksNeeded = new ArrayList<>();
@@ -91,7 +96,7 @@ public class DataService {
                         die();
                         return;
                     }
-                    startTimer(5000, "Not all acknowledgements received");
+                    startTimer(ackTimer, "Not all acknowledgements received");
                 }
                 else {
                     writeLog("Received NO VOTE from at least one subordinate");
@@ -148,30 +153,32 @@ public class DataService {
         }
     }
 
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 500)
     public void handleMessage() {
-        Node node = getNode();
-        if (node != null && node.getActive() && bufferMessages.size() > 0) {
-            Data data = bufferMessages.remove(0);
-            writeReceiveLog(data.getMessage(), data.getNode());
+        if (bufferMessages.size() > 0) {
+            Node node = getNode();
+            if (node != null && node.getActive()) {
+                Data data = bufferMessages.remove(0);
+                writeReceiveLog(data.getMessage(), data.getNode());
 
-            switch (data.getMessage().toUpperCase()) {
-                case PREPARE:
-                    handlePrepare();
-                    break;
-                case YES:
-                case NO:
-                    handleVote(data);
-                    break;
-                case COMMIT:
-                    handleCommit();
-                    break;
-                case ABORT:
-                    handleAbort();
-                    break;
-                case ACK:
-                    handleAck(data);
-                    break;
+                switch (data.getMessage().toUpperCase()) {
+                    case PREPARE:
+                        handlePrepare();
+                        break;
+                    case YES:
+                    case NO:
+                        handleVote(data);
+                        break;
+                    case COMMIT:
+                        handleCommit();
+                        break;
+                    case ABORT:
+                        handleAbort();
+                        break;
+                    case ACK:
+                        handleAck(data);
+                        break;
+                }
             }
         }
     }
@@ -205,10 +212,10 @@ public class DataService {
             die();
             return;
         }
-        startTimer(5000, "Not all votes received");
+        startTimer(voteTimer, "Not all votes received");
     }
 
-    public void receiveMessage(Data data) {
+    public synchronized void receiveMessage(Data data) {
         bufferMessages.add(data);
     }
 
@@ -234,7 +241,7 @@ public class DataService {
         sendMessage(node.getCoordinator(), msg, 1);
 
         if (msg.equals(YES)) {
-            startTimer(5000, "No response after vote");
+            startTimer(responseTimer, "No response after vote");
         }
 
         if (node.getDieAfter().equals("vote")) {
@@ -299,7 +306,7 @@ public class DataService {
                 writeSendLog(lastMsg, sub);
                 sendMessage(sub, lastMsg, 1);
             }
-            startTimer(5000, "Not all acknowledgements received");
+            startTimer(ackTimer, "Not all acknowledgements received");
         }
     }
 
@@ -330,11 +337,11 @@ public class DataService {
         node.setDieAfter("never");
         nodeService.saveNode(node);
         writeLog("Node died");
-        startTimer(3000);
+        startTimer(respawnTimer);
     }
 
     public void startTimer(int ms) {
-        startTimer(ms, "Node recovered");
+        startTimer(ms, null);
     }
 
     public void startTimer(int ms, String msg) {
@@ -343,7 +350,10 @@ public class DataService {
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
-                writeLog(msg);
+                if (msg != null) {
+                    writeLog(msg);
+                }
+                writeLog("Start recovery");
                 startRecovery();
             }
         };
