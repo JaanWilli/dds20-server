@@ -292,6 +292,7 @@ public class DataService {
         Data lastData = getLastDataEntry();
         if (lastData == null) {
             writeRecord(ABORT);
+            startEndTimer(12000);
             return;
         }
         String lastMsg = lastData.getMessage();
@@ -355,6 +356,18 @@ public class DataService {
                 }
                 writeLog("Start recovery");
                 startRecovery();
+            }
+        };
+        this.timer.schedule(timerTask, ms);
+    }
+
+    public void startEndTimer(int ms) {
+        timer.cancel();
+        this.timer = new Timer();
+        TimerTask timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                writeRecord(END);
             }
         };
         this.timer.schedule(timerTask, ms);
