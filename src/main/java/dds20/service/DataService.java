@@ -299,6 +299,7 @@ public class DataService {
         if (lastMsg.equalsIgnoreCase(PREPARE)) {
             writeSendLog("INQURY", node.getCoordinator());
             sendInquiry(node.getCoordinator(), 1);
+            startTimer(responseTimer, "No response after inquiry");
         }
         else if ((lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) &&
             node.getIsCoordinator()) {
@@ -312,6 +313,7 @@ public class DataService {
     }
 
     public void handleInquiry(String sender, int transId) {
+        timer.cancel();
         writeReceiveLog("INQUIRY", sender);
         Data lastData = getLastDataEntry();
         if (lastData == null) {
