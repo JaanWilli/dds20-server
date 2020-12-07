@@ -313,7 +313,6 @@ public class DataService {
     }
 
     public void handleInquiry(String sender, int transId) {
-        timer.cancel();
         writeReceiveLog("INQUIRY", sender);
         Data lastData = getLastDataEntry();
         if (lastData == null) {
