@@ -387,6 +387,7 @@ public class DataService {
 
         try {
             restTemplate.exchange(recipient + "/message", HttpMethod.POST, request, String.class);
+            System.out.println("The node sent a message to " + recipient);
         }
         catch (Exception ignored) {
         }
