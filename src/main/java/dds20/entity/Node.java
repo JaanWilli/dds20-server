@@ -54,17 +54,29 @@ public class Node implements Serializable {
         this.id = id;
     }
 
-    public Boolean getIsCoordinator() { return isCoordinator; }
+    public Boolean getIsCoordinator() {
+        return isCoordinator;
+    }
 
-    public void setIsCoordinator(Boolean isCoordinator) { this.isCoordinator = isCoordinator; }
+    public void setIsCoordinator(Boolean isCoordinator) {
+        this.isCoordinator = isCoordinator;
+    }
 
-    public Boolean getIsSubordinate() { return isSubordinate; }
+    public Boolean getIsSubordinate() {
+        return isSubordinate;
+    }
 
-    public void setIsSubordinate(Boolean isSubordinate) { this.isSubordinate = isSubordinate; }
+    public void setIsSubordinate(Boolean isSubordinate) {
+        this.isSubordinate = isSubordinate;
+    }
 
-    public String getCoordinator() { return coordinator; }
+    public String getCoordinator() {
+        return coordinator;
+    }
 
-    public void setCoordinator(String coordinator) { this.coordinator = coordinator; }
+    public void setCoordinator(String coordinator) {
+        this.coordinator = coordinator;
+    }
 
     public List<String> getSubordinates() {
         return subordinates;
@@ -74,13 +86,21 @@ public class Node implements Serializable {
         this.subordinates = subordinates;
     }
 
-    public Boolean getActive() { return active; }
+    public Boolean getActive() {
+        return active;
+    }
 
-    public void setActive(Boolean active) { this.active = active; }
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
 
-    public String getDieAfter() { return dieAfter; }
+    public String getDieAfter() {
+        return dieAfter;
+    }
 
-    public void setDieAfter(String dieAfter) { this.dieAfter = dieAfter; }
+    public void setDieAfter(String dieAfter) {
+        this.dieAfter = dieAfter;
+    }
 
     public Boolean getVote() {
         return vote;

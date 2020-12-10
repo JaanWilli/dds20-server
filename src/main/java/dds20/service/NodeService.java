@@ -1,6 +1,5 @@
 package dds20.service;
 
-import dds20.entity.Data;
 import dds20.entity.Node;
 import dds20.repository.NodeRepository;
 import dds20.rest.dto.SettingsPostDTO;
@@ -19,8 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class NodeService {
-
-    private final Logger log = LoggerFactory.getLogger(NodeService.class);
 
     private final NodeRepository nodeRepository;
 

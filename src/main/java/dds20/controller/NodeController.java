@@ -1,6 +1,5 @@
 package dds20.controller;
 
-import dds20.entity.Data;
 import dds20.entity.Node;
 import dds20.rest.dto.NodeGetDTO;
 import dds20.rest.dto.SettingsPostDTO;

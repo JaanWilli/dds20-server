@@ -87,7 +87,11 @@ public class Data implements Serializable {
         this.subordinates = subordinates;
     }
 
-    public Boolean getIsStatus() { return isStatus; }
+    public Boolean getIsStatus() {
+        return isStatus;
+    }
 
-    public void setIsStatus(Boolean isStatus) { this.isStatus = isStatus; }
+    public void setIsStatus(Boolean isStatus) {
+        this.isStatus = isStatus;
+    }
 }

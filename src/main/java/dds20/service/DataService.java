@@ -6,7 +6,6 @@ import dds20.repository.DataRepository;
 import dds20.repository.NodeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -69,6 +68,11 @@ public class DataService {
         this.timer = new Timer();
     }
 
+    /**
+     * Regularly checks if all votes arrived
+     * If yes and all votes are YES, send out COMMITs
+     * If yes and one vote is NO, send out ABORTs
+     */
     @Scheduled(fixedRate = 1000)
     public void allVotes() {
         Node node = getNode();
@@ -131,6 +135,10 @@ public class DataService {
         }
     }
 
+    /**
+     * Regularly checks if all acknowledgements arrived
+     * If yes, writes END
+     */
     @Scheduled(fixedRate = 1000)
     public void allAcks() {
         Node node = getNode();
@@ -153,6 +161,10 @@ public class DataService {
         }
     }
 
+    /**
+     * Regularly processes arrived messages from a buffer
+     * Calls the respective message handler
+     */
     @Scheduled(fixedRate = 500)
     public void handleMessage() {
         if (bufferMessages.size() > 0) {
@@ -193,6 +205,9 @@ public class DataService {
         timer.cancel();
     }
 
+    /**
+     * Activates the node and starts the transaction by sending out PREPAREs
+     */
     public void startTransaction() {
         Data startMessage = new Data();
         startMessage.setIsStatus(true);
@@ -284,6 +299,9 @@ public class DataService {
         acksReceived.add(data.getNode());
     }
 
+    /**
+     * Recovery process that is called from timers
+     */
     public void startRecovery() {
         Node node = getNode();
         node.setActive(true);
@@ -302,7 +320,7 @@ public class DataService {
             startTimer(responseTimer, "No response after inquiry");
         }
         else if ((lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) &&
-            node.getIsCoordinator()) {
+                node.getIsCoordinator()) {
             List<String> noAcks = getSubordinatesNoAck(node.getSubordinates());
             for (String sub : noAcks) {
                 writeSendLog(lastMsg, sub);
@@ -312,6 +330,9 @@ public class DataService {
         }
     }
 
+    /**
+     * Handle inquiries by resending the last state
+     */
     public void handleInquiry(String sender, int transId) {
         writeReceiveLog("INQUIRY", sender);
         Data lastData = getLastDataEntry();
@@ -362,6 +383,10 @@ public class DataService {
         this.timer.schedule(timerTask, ms);
     }
 
+    /**
+     * Special case where the coordinator aborted after recovering and received no inquries
+     * Then write END
+     */
     public void startEndTimer(int ms) {
         timer.cancel();
         this.timer = new Timer();
