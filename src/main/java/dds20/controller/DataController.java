@@ -32,16 +32,16 @@ public class DataController {
     @PostMapping("/start")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public void postStart() {
-        dataService.startTransaction();
+    public void postStart(@RequestParam("session") String session) {
+        dataService.startTransaction(session);
     }
 
     @GetMapping("/info")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public List<DataGetDTO> getInfo() {
+    public List<DataGetDTO> getInfo(@RequestParam("session") String session) {
         List<DataGetDTO> result = new ArrayList<>();
-        for (Data data : dataService.getAllData()) {
+        for (Data data : dataService.getAllData(session)) {
             result.add(DTOMapper.INSTANCE.convertEntityToDataGetDTO(data));
         }
         return result;
@@ -50,20 +50,23 @@ public class DataController {
     @PostMapping("/message")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public void postMessage(@RequestBody MessagePostDTO messagePostDTO) {
-        if (nodeService.isActive()) {
+    public void postMessage(@RequestParam("session") String session,
+                            @RequestBody MessagePostDTO messagePostDTO) {
+        if (nodeService.isActive(session)) {
             // handle message
             Data data = DTOMapper.INSTANCE.convertMessagePostDTOtoEntity(messagePostDTO);
-            dataService.receiveMessage(data);
+            data.setSession(session);
+            dataService.receiveMessage(session, data);
         }
     }
 
     @PostMapping("/inquiry")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public void postInquiry(@RequestBody InquiryPostDTO inquiryPostDTO) {
-        if (nodeService.isActive()) {
-            dataService.handleInquiry(inquiryPostDTO.getSender(), inquiryPostDTO.getTransId());
+    public void postInquiry(@RequestParam("session") String session,
+                            @RequestBody InquiryPostDTO inquiryPostDTO) {
+        if (nodeService.isActive(session)) {
+            dataService.handleInquiry(session, inquiryPostDTO.getSender(), inquiryPostDTO.getTransId());
         }
     }
 }

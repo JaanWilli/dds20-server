@@ -7,4 +7,7 @@ import org.springframework.stereotype.Repository;
 @Repository("nodeRepository")
 public interface NodeRepository extends JpaRepository<Node, Long> {
     Node findTopByOrderByIdDesc();
+    Node findBySession(String session);
+
+    void deleteBySession(String session);
 }

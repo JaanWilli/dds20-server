@@ -15,4 +15,10 @@ public interface DataRepository extends JpaRepository<Data, Long> {
     List<Data> findAllByIsStatus(Boolean status);
 
     Data findTopByIsStatusFalseOrderByIdDesc();
+
+    Data findTopByIsStatusFalseAndSessionOrderByIdDesc(String session);
+
+    List<Data> findAllBySession(String session);
+
+    void deleteAllBySession(String session);
 }

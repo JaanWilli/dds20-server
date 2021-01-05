@@ -23,6 +23,9 @@ public class Node implements Serializable {
     private Long id;
 
     @Column(nullable = false)
+    private String session;
+
+    @Column(nullable = false)
     private Boolean isCoordinator;
 
     @Column(nullable = false)
@@ -116,5 +119,13 @@ public class Node implements Serializable {
 
     public void setNode(String node) {
         this.node = node;
+    }
+
+    public String getSession() {
+        return session;
+    }
+
+    public void setSession(String session) {
+        this.session = session;
     }
 }

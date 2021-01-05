@@ -3,12 +3,14 @@ package dds20.service;
 import dds20.entity.Node;
 import dds20.repository.NodeRepository;
 import dds20.rest.dto.SettingsPostDTO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.reflect.Array;
+import java.util.List;
 
 /**
  * Node Service
@@ -26,17 +28,17 @@ public class NodeService {
         this.nodeRepository = nodeRepository;
     }
 
-    public Node getNode() {
-        return this.nodeRepository.findTopByOrderByIdDesc();
+    public Node getNode(String session) {
+        return this.nodeRepository.findBySession(session);
     }
 
-    public boolean isActive() {
-        Node node = getNode();
+    public boolean isActive(String session) {
+        Node node = getNode(session);
         return (node != null) ? node.getActive() : false;
     }
 
-    public void updateSettings(SettingsPostDTO newSettings) {
-        Node node = getNode();
+    public void updateSettings(String session, SettingsPostDTO newSettings) {
+        Node node = getNode(session);
         node.setActive(newSettings.getActive());
         node.setDieAfter(newSettings.getDieAfter());
         node.setVote(newSettings.getVote());
@@ -47,8 +49,14 @@ public class NodeService {
         nodeRepository.saveAndFlush(newNode);
     }
 
-    public void clearNode() {
-        nodeRepository.deleteAll();
-        nodeRepository.flush();
+    public void clearNode(String session) {
+        this.nodeRepository.deleteBySession(session);
+        this.nodeRepository.flush();
+    }
+
+    @Scheduled(fixedRate = 10000)
+    public void printN() {
+        List<Node> l = this.nodeRepository.findAll();
+        System.out.println(l.size());
     }
 }

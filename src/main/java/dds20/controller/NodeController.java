@@ -30,28 +30,31 @@ public class NodeController {
     @GetMapping("/status")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public NodeGetDTO getNode() {
-        Node node = nodeService.getNode();
+    public NodeGetDTO getNode(@RequestParam("session") String session) {
+        Node node = nodeService.getNode(session);
         return DTOMapper.INSTANCE.convertEntityToNodeGetDTO(node);
     }
 
     @PostMapping("/setup")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public void postSetup(@RequestBody SetupPostDTO setupPostDTO) {
-        nodeService.clearNode();
-        dataService.clearData();
+    public void postSetup(@RequestParam("session") String session,
+                          @RequestBody SetupPostDTO setupPostDTO) {
+        nodeService.clearNode(session);
+        dataService.clearData(session);
 
         Node node = DTOMapper.INSTANCE.convertSetupPostDTOtoEntity(setupPostDTO);
         node.setVote(true);
         node.setActive(true);
+        node.setSession(session);
         nodeService.saveNode(node);
     }
 
     @PostMapping("/settings")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public void postMessage(@RequestBody SettingsPostDTO settingsPostDTO) {
-        nodeService.updateSettings(settingsPostDTO);
+    public void postMessage(@RequestParam("session") String session,
+                            @RequestBody SettingsPostDTO settingsPostDTO) {
+        nodeService.updateSettings(session, settingsPostDTO);
     }
 }

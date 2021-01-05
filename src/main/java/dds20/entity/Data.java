@@ -22,6 +22,9 @@ public class Data implements Serializable {
     private Long id;
 
     @Column(nullable = false)
+    private String session;
+
+    @Column(nullable = false)
     private String message;
 
     @Column
@@ -93,5 +96,13 @@ public class Data implements Serializable {
 
     public void setIsStatus(Boolean isStatus) {
         this.isStatus = isStatus;
+    }
+
+    public String getSession() {
+        return session;
+    }
+
+    public void setSession(String session) {
+        this.session = session;
     }
 }

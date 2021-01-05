@@ -46,11 +46,11 @@ public class DataService {
     private static final int voteTimer = 8000;
     private static final int responseTimer = 8000;
 
-    private final List<Data> bufferMessages = new ArrayList<>();
-    private final Map<String, String> votes = new HashMap<>();
-    private List<String> acksNeeded = new ArrayList<>();
-    private final List<String> acksReceived = new ArrayList<>();
-    private Timer timer;
+    private final Map<String, List<Data>> bufferMessages = new HashMap<>();
+    private final Map<String, Map<String, String>> votes = new HashMap<>();
+    private final Map<String, List<String>> acksNeeded = new HashMap<>();
+    private final Map<String, List<String>> acksReceived = new HashMap<>();
+    private final Map<String, Timer> timer = new HashMap<>();
 
 
     @Autowired
@@ -65,7 +65,6 @@ public class DataService {
         this.dataRepository = dataRepository;
         this.nodeRepository = nodeRepository;
         this.restTemplate = restTemplate;
-        this.timer = new Timer();
     }
 
     /**
@@ -75,60 +74,64 @@ public class DataService {
      */
     @Scheduled(fixedRate = 1000)
     public void allVotes() {
-        Node node = getNode();
-        if (node != null && node.getActive() && node.getIsCoordinator()) {
-            // if all votes arrived
-            if (votes.keySet().size() == node.getSubordinates().size()) {
-                timer.cancel();
-                // if at least one of the votes is NO
-                if (!votes.containsValue(NO)) {
-                    votes.clear();
-                    writeLog("Received YES VOTE from all subordinates");
-                    writeRecord(COMMIT);
-
-                    if (node.getDieAfter().equals("commit/abort")) {
-                        die();
-                        return;
-                    }
-
-                    for (String s : node.getSubordinates()) {
-                        writeSendLog(COMMIT, s);
-                        sendMessage(s, COMMIT, 1);
-                        acksNeeded.add(s);
-                    }
-                    if (node.getDieAfter().equals("result")) {
-                        die();
-                        return;
-                    }
-                    startTimer(ackTimer, "Not all acknowledgements received");
-                }
-                else {
-                    writeLog("Received NO VOTE from at least one subordinate");
-                    writeRecord(ABORT);
-
-                    if (node.getDieAfter().equals("commit/abort")) {
-                        die();
+        for (Map.Entry<String, Map<String, String>> voteMap : votes.entrySet()) {
+            Node node = getNode(voteMap.getKey());
+            Map<String, String> votes = voteMap.getValue();
+            if (node != null && node.getActive() && node.getIsCoordinator()) {
+                // if all votes arrived
+                if (votes.keySet().size() == node.getSubordinates().size()) {
+                    timer.get(node.getSession()).cancel();
+                    initAcks(node.getSession());
+                    // if at least one of the votes is NO
+                    if (!votes.containsValue(NO)) {
                         votes.clear();
-                        return;
-                    }
+                        writeLog(node.getSession(), "Received YES VOTE from all subordinates");
+                        writeRecord(node.getSession(), COMMIT);
 
-                    int c = 0;
-                    for (Map.Entry<String, String> n : votes.entrySet()) {
-                        if (n.getValue() == null || n.getValue().equalsIgnoreCase(YES)) {
-                            writeSendLog(ABORT, n.getKey());
-                            sendMessage(n.getKey(), ABORT, 1);
-                            acksNeeded.add(n.getKey());
-                            c++;
+                        if (node.getDieAfter().equals("commit/abort")) {
+                            die(node.getSession());
+                            return;
                         }
+
+                        for (String s : node.getSubordinates()) {
+                            writeSendLog(node.getSession(), COMMIT, s);
+                            sendMessage(node.getSession(), s, COMMIT, 1);
+                            acksNeeded.get(node.getSession()).add(s);
+                        }
+                        if (node.getDieAfter().equals("result")) {
+                            die(node.getSession());
+                            return;
+                        }
+                        startTimer(node.getSession(), ackTimer, "Not all acknowledgements received");
                     }
-                    votes.clear();
-                    if (node.getDieAfter().equals("result")) {
-                        die();
-                        return;
-                    }
-                    // if no acks are necessary to write END
-                    if (c == 0) {
-                        writeRecord(END);
+                    else {
+                        writeLog(node.getSession(), "Received NO VOTE from at least one subordinate");
+                        writeRecord(node.getSession(), ABORT);
+
+                        if (node.getDieAfter().equals("commit/abort")) {
+                            die(node.getSession());
+                            voteMap.getValue().clear();
+                            return;
+                        }
+
+                        int c = 0;
+                        for (Map.Entry<String, String> vote : votes.entrySet()) {
+                            if (vote.getValue() == null || vote.getValue().equalsIgnoreCase(YES)) {
+                                writeSendLog(node.getSession(), ABORT, vote.getKey());
+                                sendMessage(node.getSession(), vote.getKey(), ABORT, 1);
+                                acksNeeded.get(node.getSession()).add(vote.getKey());
+                                c++;
+                            }
+                        }
+                        voteMap.getValue().clear();
+                        if (node.getDieAfter().equals("result")) {
+                            die(node.getSession());
+                            return;
+                        }
+                        // if no acks are necessary to write END
+                        if (c == 0) {
+                            writeRecord(node.getSession(), END);
+                        }
                     }
                 }
             }
@@ -141,19 +144,22 @@ public class DataService {
      */
     @Scheduled(fixedRate = 1000)
     public void allAcks() {
-        Node node = getNode();
-        if (node != null) {
-            if (node.getActive() && node.getIsCoordinator()) {
-                Data lastData = getLastDataEntry();
-                if (lastData != null) {
-                    String lastMsg = lastData.getMessage();
-                    if (lastMsg != null && (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT))) {
-                        if (acksReceived.size() > 0 && acksReceived.size() == acksNeeded.size()) {
-                            timer.cancel();
-                            writeLog("Received ACK from all subordinates");
-                            writeRecord(END);
-                            acksReceived.clear();
-                            acksNeeded.clear();
+        for (Map.Entry<String, List<String>> e : acksNeeded.entrySet()) {
+            Node node = getNode(e.getKey());
+            if (node != null && acksReceived.containsKey(node.getSession())) {
+                if (node.getActive() && node.getIsCoordinator()) {
+                    Data lastData = getLastDataEntry(node.getSession());
+                    if (lastData != null) {
+                        String lastMsg = lastData.getMessage();
+                        if (lastMsg != null && (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT))) {
+                            if (acksReceived.get(node.getSession()).size() > 0
+                                    && acksReceived.get(node.getSession()).size() == e.getValue().size()) {
+                                timer.get(node.getSession()).cancel();
+                                writeLog(node.getSession(), "Received ACK from all subordinates");
+                                writeRecord(node.getSession(), END);
+                                acksReceived.get(node.getSession()).clear();
+                                acksNeeded.get(node.getSession()).clear();
+                            }
                         }
                     }
                 }
@@ -167,240 +173,268 @@ public class DataService {
      */
     @Scheduled(fixedRate = 500)
     public void handleMessage() {
-        if (bufferMessages.size() > 0) {
-            Node node = getNode();
-            if (node != null && node.getActive()) {
-                Data data = bufferMessages.remove(0);
-                writeReceiveLog(data.getMessage(), data.getNode());
+        for (Map.Entry<String, List<Data>> messages : bufferMessages.entrySet()) {
+            if (messages.getValue().size() > 0) {
+                Node node = getNode(messages.getKey());
+                if (node != null && node.getActive()) {
+                    Data data = messages.getValue().remove(0);
+                    writeReceiveLog(node.getSession(), data.getMessage(), data.getNode());
 
-                switch (data.getMessage().toUpperCase()) {
-                    case PREPARE:
-                        handlePrepare();
-                        break;
-                    case YES:
-                    case NO:
-                        handleVote(data);
-                        break;
-                    case COMMIT:
-                        handleCommit();
-                        break;
-                    case ABORT:
-                        handleAbort();
-                        break;
-                    case ACK:
-                        handleAck(data);
-                        break;
+                    switch (data.getMessage().toUpperCase()) {
+                        case PREPARE:
+                            handlePrepare(node);
+                            break;
+                        case YES:
+                        case NO:
+                            handleVote(node, data);
+                            break;
+                        case COMMIT:
+                            handleCommit(node);
+                            break;
+                        case ABORT:
+                            handleAbort(node);
+                            break;
+                        case ACK:
+                            handleAck(node, data);
+                            break;
+                    }
                 }
             }
         }
     }
 
-    public void clearData() {
-        dataRepository.deleteAll();
+    public void clearData(String session) {
+        dataRepository.deleteAllBySession(session);
         dataRepository.flush();
-        bufferMessages.clear();
-        votes.clear();
-        acksNeeded.clear();
-        acksReceived.clear();
-        timer.cancel();
+        if (bufferMessages.containsKey(session)) {
+            bufferMessages.clear();
+        }
+        if (votes.containsKey(session)) {
+            votes.clear();
+        }
+        if (acksNeeded.containsKey(session)) {
+            acksNeeded.get(session).clear();
+        }
+        if (acksReceived.containsKey(session)) {
+            acksReceived.clear();
+        }
+        if (timer.containsKey(session)) {
+            timer.get(session).cancel();
+        }
     }
 
     /**
      * Activates the node and starts the transaction by sending out PREPAREs
      */
-    public void startTransaction() {
+    public void startTransaction(String session) {
         Data startMessage = new Data();
         startMessage.setIsStatus(true);
         startMessage.setMessage("Received start command from client");
+        startMessage.setSession(session);
         saveData(startMessage);
 
-        Node node = getNode();
+        Node node = getNode(session);
         node.setActive(true);
         nodeService.saveNode(node);
 
         for (String s : getSubordinates()) {
-            writeSendLog(PREPARE, s);
-            sendMessage(s, PREPARE, 1);
+            writeSendLog(node.getSession(), PREPARE, s);
+            sendMessage(session, s, PREPARE, 1);
         }
 
         if (node.getDieAfter().equals("prepare")) {
-            die();
+            die(node.getSession());
             return;
         }
-        startTimer(voteTimer, "Not all votes received");
+        startTimer(session, voteTimer, "Not all votes received");
     }
 
-    public synchronized void receiveMessage(Data data) {
-        bufferMessages.add(data);
+    public synchronized void receiveMessage(String session, Data data) {
+        initMessageBuffer(session);
+        bufferMessages.get(session).add(data);
     }
 
-    private void handlePrepare() {
-        Node node = getNode();
+    private void handlePrepare(Node node) {
         String msg;
 
         if (node.getVote()) {
-            writeRecord(PREPARE);
+            writeRecord(node.getSession(), PREPARE);
             msg = YES;
         }
         else {
-            writeRecord(ABORT);
+            writeRecord(node.getSession(), ABORT);
             msg = NO;
         }
 
         if (node.getDieAfter().equals("prepare")) {
-            die();
+            die(node.getSession());
             return;
         }
 
-        writeSendLog(msg, node.getCoordinator());
-        sendMessage(node.getCoordinator(), msg, 1);
+        writeSendLog(node.getSession(), msg, node.getCoordinator());
+        sendMessage(node.getSession(), node.getCoordinator(), msg, 1);
 
         if (msg.equals(YES)) {
-            startTimer(responseTimer, "No response after vote");
+            startTimer(node.getSession(), responseTimer, "No response after vote");
         }
 
         if (node.getDieAfter().equals("vote")) {
-            die();
+            die(node.getSession());
         }
     }
 
-    private void handleVote(Data data) {
-        votes.put(data.getNode(), data.getMessage());
+    private void handleVote(Node node, Data data) {
+        initVotes(node.getSession());
+        votes.get(node.getSession()).put(data.getNode(), data.getMessage());
     }
 
-    private void handleCommit() {
-        timer.cancel();
-        Node node = getNode();
-        writeRecord(COMMIT);
+    private void handleCommit(Node node) {
+        if (timer.containsKey(node.getSession())) {
+            timer.get(node.getSession()).cancel();
+        }
+        writeRecord(node.getSession(), COMMIT);
 
         if (node.getDieAfter().equals("commit/abort")) {
-            die();
+            die(node.getSession());
             return;
         }
 
-        writeSendLog(ACK, node.getCoordinator());
-        sendMessage(node.getCoordinator(), ACK, 1);
+        writeSendLog(node.getSession(), ACK, node.getCoordinator());
+        sendMessage(node.getSession(), node.getCoordinator(), ACK, 1);
     }
 
-    private void handleAbort() {
-        timer.cancel();
-        Node node = getNode();
-        writeRecord(ABORT);
+    private void handleAbort(Node node) {
+        if (timer.containsKey(node.getSession())) {
+            timer.get(node.getSession()).cancel();
+        }
+        writeRecord(node.getSession(), ABORT);
 
         if (node.getDieAfter().equals("commit/abort")) {
-            die();
+            die(node.getSession());
         }
 
-        writeSendLog(ACK, node.getCoordinator());
-        sendMessage(node.getCoordinator(), ACK, 1);
+        writeSendLog(node.getSession(), ACK, node.getCoordinator());
+        sendMessage(node.getSession(), node.getCoordinator(), ACK, 1);
     }
 
-    private void handleAck(Data data) {
-        acksReceived.add(data.getNode());
+    private void handleAck(Node node, Data data) {
+        initAcks(node.getSession());
+        acksReceived.get(node.getSession()).add(data.getNode());
     }
 
     /**
      * Recovery process that is called from timers
      */
-    public void startRecovery() {
-        Node node = getNode();
+    public void startRecovery(String session) {
+        Node node = getNode(session);
         node.setActive(true);
         nodeService.saveNode(node);
 
-        Data lastData = getLastDataEntry();
+        Data lastData = getLastDataEntry(session);
         if (lastData == null) {
-            writeRecord(ABORT);
-            startEndTimer(12000);
+            writeRecord(session, ABORT);
+            startEndTimer(session,10000);
             return;
         }
         String lastMsg = lastData.getMessage();
         if (lastMsg.equalsIgnoreCase(PREPARE)) {
-            writeSendLog("INQURY", node.getCoordinator());
-            sendInquiry(node.getCoordinator(), 1);
-            startTimer(responseTimer, "No response after inquiry");
+            writeSendLog(session, "INQURY", node.getCoordinator());
+            sendInquiry(session, node.getCoordinator(), 1);
+            startTimer(session, responseTimer, "No response after inquiry");
         }
         else if ((lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) &&
                 node.getIsCoordinator()) {
-            List<String> noAcks = getSubordinatesNoAck(node.getSubordinates());
-            for (String sub : noAcks) {
-                writeSendLog(lastMsg, sub);
-                sendMessage(sub, lastMsg, 1);
+            initAcks(session);
+            for (String sub : node.getSubordinates()) {
+                if (!acksReceived.get(session).contains(sub)) {
+                    writeSendLog(session, lastMsg, sub);
+                    sendMessage(session, sub, lastMsg, 1);
+                    if (!acksNeeded.get(session).contains(sub)) {
+                        acksNeeded.get(session).add(sub);
+                    }
+                }
             }
-            startTimer(ackTimer, "Not all acknowledgements received");
+            startTimer(session, ackTimer, "Not all acknowledgements received");
         }
     }
 
     /**
      * Handle inquiries by resending the last state
      */
-    public void handleInquiry(String sender, int transId) {
-        writeReceiveLog("INQUIRY", sender);
-        Data lastData = getLastDataEntry();
+    public void handleInquiry(String session, String sender, int transId) {
+        writeReceiveLog(session, "INQUIRY", sender);
+        Data lastData = getLastDataEntry(session);
         if (lastData == null) {
-            votes.put(sender, null);
+            initVotes(session);
+            votes.get(session).put(sender, null);
             return;
         }
         String lastMsg = lastData.getMessage();
         if (lastMsg.equalsIgnoreCase(COMMIT) || lastMsg.equalsIgnoreCase(ABORT)) {
-            writeSendLog(lastMsg, sender);
-            sendMessage(sender, lastMsg, transId);
-            if (!acksNeeded.contains(sender)) {
-                acksNeeded.add(sender);
+            writeSendLog(session, lastMsg, sender);
+            sendMessage(session, sender, lastMsg, transId);
+            initAcks(session);
+            if (!acksNeeded.get(session).contains(sender)) {
+                acksNeeded.get(session).add(sender);
             }
         }
         else {
-            writeSendLog(ABORT, sender);
-            sendMessage(sender, ABORT, transId);
+            writeSendLog(session, ABORT, sender);
+            sendMessage(session, sender, ABORT, transId);
         }
     }
 
-    public void die() {
-        Node node = getNode();
+    public void die(String session) {
+        Node node = getNode(session);
         node.setActive(false);
         node.setDieAfter("never");
         nodeService.saveNode(node);
-        writeLog("Node died");
-        startTimer(respawnTimer);
+        writeLog(session, "Node died");
+        startTimer(session, respawnTimer);
     }
 
-    public void startTimer(int ms) {
-        startTimer(ms, null);
+    public void startTimer(String session, int ms) {
+        startTimer(session, ms, null);
     }
 
-    public void startTimer(int ms, String msg) {
-        timer.cancel();
-        this.timer = new Timer();
+    public void startTimer(String session, int ms, String msg) {
+        if (timer.containsKey(session)) {
+            timer.get(session).cancel();
+        }
+        this.timer.put(session, new Timer());
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
                 if (msg != null) {
-                    writeLog(msg);
+                    writeLog(session, msg);
                 }
-                writeLog("Start recovery");
-                startRecovery();
+                writeLog(session,"Start recovery");
+                startRecovery(session);
             }
         };
-        this.timer.schedule(timerTask, ms);
+        this.timer.get(session).schedule(timerTask, ms);
     }
 
     /**
      * Special case where the coordinator aborted after recovering and received no inquries
      * Then write END
      */
-    public void startEndTimer(int ms) {
-        timer.cancel();
-        this.timer = new Timer();
+    public void startEndTimer(String session, int ms) {
+        if (timer.containsKey(session)) {
+            timer.get(session).cancel();
+        }
+        this.timer.put(session, new Timer());
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
-                writeRecord(END);
+                writeRecord(session, END);
             }
         };
-        this.timer.schedule(timerTask, ms);
+        this.timer.get(session).schedule(timerTask, ms);
     }
 
-    public void sendMessage(String recipient, String msg, int transId) {
-        Node node = getNode();
+    public void sendMessage(String session, String recipient, String msg, int transId) {
+        Node node = getNode(session);
 
         MultiValueMap<String, String> message = new LinkedMultiValueMap<>();
         message.add("message", msg);
@@ -411,15 +445,16 @@ public class DataService {
         HttpEntity<Map> request = getRequest(message);
 
         try {
-            restTemplate.exchange(recipient + "/message", HttpMethod.POST, request, String.class);
+            restTemplate.exchange(recipient + "/message?session={session}", HttpMethod.POST, request, String.class, session);
             System.out.println("The node sent a message to " + recipient);
         }
-        catch (Exception ignored) {
+        catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    public void sendInquiry(String recipient, int transId) {
-        Node node = getNode();
+    public void sendInquiry(String session, String recipient, int transId) {
+        Node node = getNode(session);
 
         MultiValueMap<String, String> message = new LinkedMultiValueMap<>();
         message.add("sender", node.getNode());
@@ -428,70 +463,83 @@ public class DataService {
         HttpEntity<Map> request = getRequest(message);
 
         try {
-            restTemplate.exchange(recipient + "/inquiry", HttpMethod.POST, request, String.class);
+            restTemplate.exchange(recipient + "/inquiry?session={session}", HttpMethod.POST, request, String.class, session);
         }
-        catch (Exception ignored) {
+        catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    public List<Data> getAllData() {
-        return this.dataRepository.findAll();
+    public List<Data> getAllData(String session) {
+        return this.dataRepository.findAllBySession(session);
     }
 
-    public Data getLastDataEntry() {
-        return this.dataRepository.findTopByIsStatusFalseOrderByIdDesc();
+    public Data getLastDataEntry(String session) {
+        return this.dataRepository.findTopByIsStatusFalseAndSessionOrderByIdDesc(session);
     }
 
     public synchronized void saveData(Data newData) {
         dataRepository.saveAndFlush(newData);
     }
 
-    private Node getNode() {
-        return this.nodeRepository.findTopByOrderByIdDesc();
+    private Node getNode(String session) {
+        return this.nodeRepository.findBySession(session);
     }
 
     private List<String> getSubordinates() {
         return nodeRepository.findTopByOrderByIdDesc().getSubordinates();
     }
 
-    private List<String> getSubordinatesNoAck(List<String> subordinates) {
-        List<String> ret = new ArrayList<>();
-        for (String sub : subordinates) {
-            if (!acksReceived.contains(sub)) {
-                ret.add(sub);
-                if (!acksNeeded.contains(sub)) {
-                    acksNeeded.add(sub);
-                }
-            }
+    private void initMessageBuffer(String session) {
+        if (!bufferMessages.containsKey(session)) {
+            bufferMessages.put(session, new ArrayList<>());
         }
-        return ret;
     }
 
-    private void writeSendLog(String msg, String recipient) {
+    private void initVotes(String session) {
+        if (!votes.containsKey(session)) {
+            votes.put(session, new HashMap<>());
+        }
+    }
+
+    private void initAcks(String session) {
+        if (!acksNeeded.containsKey(session)) {
+            acksNeeded.put(session, new ArrayList<>());
+        }
+        if (!acksReceived.containsKey(session)) {
+            acksReceived.put(session, new ArrayList<>());
+        }
+    }
+
+    private void writeSendLog(String session, String msg, String recipient) {
         Data log = new Data();
         log.setIsStatus(true);
         log.setMessage(String.format("Sending \"%s\" to %s", msg, recipient));
+        log.setSession(session);
         saveData(log);
     }
 
-    private void writeReceiveLog(String msg, String sender) {
+    private void writeReceiveLog(String session, String msg, String sender) {
         Data log = new Data();
         log.setIsStatus(true);
         log.setMessage(String.format("Receiving \"%s\" from %s", msg, sender));
+        log.setSession(session);
         saveData(log);
     }
 
-    private void writeLog(String msg) {
+    private void writeLog(String session, String msg) {
         Data log = new Data();
         log.setIsStatus(true);
         log.setMessage(msg);
+        log.setSession(session);
         saveData(log);
     }
 
-    private void writeRecord(String msg) {
+    private void writeRecord(String session, String msg) {
         Data data = new Data();
         data.setIsStatus(false);
         data.setMessage(msg);
+        data.setSession(session);
         saveData(data);
     }
 
