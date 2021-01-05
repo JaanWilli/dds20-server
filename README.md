@@ -18,6 +18,6 @@ Please use our React.js [Client App](https://github.com/Davfon/dds20-client)
     - Linux: `./gradlew`
     - Windows: `./gradlew.bat`
 3. `./gradlew build` to build the application
-4. `./gradlew bootRun`to run
+4. `./gradlew bootRun -Dserver.port=8081`to run on port 8081
 
 More Information about [Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html) and [Gradle](https://gradle.org/docs/).
