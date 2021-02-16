@@ -40,8 +40,8 @@ public class NodeController {
     @ResponseBody
     public void postSetup(@RequestParam("session") String session,
                           @RequestBody SetupPostDTO setupPostDTO) {
-        nodeService.clearNode(session);
         dataService.clearData(session);
+        dataService.startSession(session);
 
         Node node = DTOMapper.INSTANCE.convertSetupPostDTOtoEntity(setupPostDTO);
         node.setVote(true);

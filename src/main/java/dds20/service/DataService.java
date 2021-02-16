@@ -51,6 +51,7 @@ public class DataService {
     private final Map<String, List<String>> acksNeeded = new HashMap<>();
     private final Map<String, List<String>> acksReceived = new HashMap<>();
     private final Map<String, Timer> timer = new HashMap<>();
+    private final Map<String, Timer> sessionTimer = new HashMap<>();
 
 
     @Autowired
@@ -206,21 +207,31 @@ public class DataService {
     public void clearData(String session) {
         dataRepository.deleteAllBySession(session);
         dataRepository.flush();
-        if (bufferMessages.containsKey(session)) {
-            bufferMessages.clear();
-        }
-        if (votes.containsKey(session)) {
-            votes.clear();
-        }
-        if (acksNeeded.containsKey(session)) {
-            acksNeeded.get(session).clear();
-        }
-        if (acksReceived.containsKey(session)) {
-            acksReceived.clear();
-        }
+        bufferMessages.remove(session);
+        votes.remove(session);
+        acksNeeded.remove(session);
+        acksReceived.remove(session);
         if (timer.containsKey(session)) {
             timer.get(session).cancel();
+            timer.remove(session);
         }
+        nodeService.clearNode(session);
+    }
+
+    public void startSession(String session) {
+        if (sessionTimer.containsKey(session)) {
+            sessionTimer.get(session).cancel();
+        }
+        else {
+            sessionTimer.put(session, new Timer());
+        }
+        TimerTask task = new TimerTask() {
+            @Override
+            public void run() {
+                clearData(session);
+            }
+        };
+        sessionTimer.get(session).schedule(task, 30 * 1000);
     }
 
     /**
@@ -446,7 +457,6 @@ public class DataService {
 
         try {
             restTemplate.exchange(recipient + "/message?session={session}", HttpMethod.POST, request, String.class, session);
-            System.out.println("The node sent a message to " + recipient);
         }
         catch (Exception e) {
             e.printStackTrace();

@@ -53,10 +53,4 @@ public class NodeService {
         this.nodeRepository.deleteBySession(session);
         this.nodeRepository.flush();
     }
-
-    @Scheduled(fixedRate = 10000)
-    public void printN() {
-        List<Node> l = this.nodeRepository.findAll();
-        System.out.println(l.size());
-    }
 }

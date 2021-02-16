@@ -3,6 +3,7 @@ package dds20.repository;
 import dds20.entity.Data;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,5 +21,6 @@ public interface DataRepository extends JpaRepository<Data, Long> {
 
     List<Data> findAllBySession(String session);
 
+    @Transactional
     void deleteAllBySession(String session);
 }
